@@ -11,8 +11,8 @@ while True:
 
     ball_positions = detect_balls(frame)
     robot_info = detect_robot(frame)
-    print(f"Ball: {ball_positions}")
-    print(f"Robot: {robot_info}")
+
+    print("Robot info:", robot_info)
 
     for (x, y, radius) in ball_positions:
         cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
