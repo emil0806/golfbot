@@ -1,7 +1,9 @@
-from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, SpeedPercent, LargeMotor
+from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D, SpeedPercent, LargeMotor
 
-tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
-collector = LargeMotor(OUTPUT_C)
+tank_drive = MoveTank(OUTPUT_B, OUTPUT_C)
+collector = LargeMotor(OUTPUT_D)
+
+collector.on(SpeedPercent(-100))
 
 
 def move_robot(direction):

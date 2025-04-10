@@ -3,25 +3,39 @@ import math
 previous_best_ball = None
 
 
-def find_best_ball(ball_positions, robot_position):
+def find_best_ball(ball_positions, robot_position, front_marker):
     global previous_best_ball
 
     if not ball_positions or not robot_position:
         return None
 
-    rx, ry = robot_position
+    (rx, ry) = robot_position 
+    (fx, fy) = front_marker
 
-    new_best_ball = min(ball_positions, key=lambda ball: math.hypot(ball[0] - rx, ball[1] - ry))
+    print("Robot Center: ", (rx, ry))
+    print("Robot Front: ", (fx, fy))
+
+    print("All ball positions:")
+    for i, ball in enumerate(ball_positions):
+        dist = math.hypot(ball[0] - rx, ball[1] - ry)
+        print(f"  Ball {i}: {ball}, Distance: {dist:.2f}")
+
+    new_best_ball = min(ball_positions, key=lambda ball: math.hypot(ball[0] - fx, ball[1] - fy))
+    new_dist = math.hypot(new_best_ball[0] - fx, new_best_ball[1] - fy)
+    print(f"New best candidate: {new_best_ball}, Distance: {new_dist:.2f}")
 
     if previous_best_ball:
-        old_dist = math.hypot(previous_best_ball[0] - rx, previous_best_ball[1] - ry)
-        new_dist = math.hypot(new_best_ball[0] - rx, new_best_ball[1] - ry)
+        old_dist = math.hypot(previous_best_ball[0] - fx, previous_best_ball[1] - fy)
+        print(f"Previous best ball: {previous_best_ball}, Distance: {old_dist:.2f}")
 
-        if new_dist > old_dist * 0.95: 
+        if new_dist > old_dist * 0.95:
+            print("New best is not significantly better. Keeping previous best.")
             return previous_best_ball
+        else:
+            print("New best is significantly better. Updating.")
+
 
     previous_best_ball = new_best_ball
-    print(f"Ball: {new_best_ball}")
     return new_best_ball
 
 
@@ -33,28 +47,30 @@ def determine_direction(robot_position, ball_position):
 
     (rx, ry), (fx, fy), _ = robot_position 
 
+    print("Robot Center: ", (rx, ry))
+    print("Robot Front: ", (fx, fy))
+    print("Ball: ", (bx, by))
+
     vector_to_ball = (bx - rx, by - ry)
-    vector_front = (fx - rx, fy - ry)    
+    vector_front = (fx - rx, fy - ry)
+    print("V Ball: ", vector_to_ball)
+    print("V Front: ", vector_front)    
 
-    dot_product = vector_to_ball[0] * vector_front[0] + vector_to_ball[1] * vector_front[1]
+    dot = vector_front[0] * vector_to_ball[0] + vector_front[1] * vector_to_ball[1]
+    mag_f = math.hypot(*vector_front)
+    mag_b = math.hypot(*vector_to_ball)
+    cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
+    angle_difference = math.degrees(math.acos(cos_theta))
 
-    magnitude_ball = math.sqrt(vector_to_ball[0] ** 2 + vector_to_ball[1] ** 2)
-    magnitude_front = math.sqrt(vector_front[0] ** 2 + vector_front[1] ** 2)
+    # Determine if angle is to the left or right using cross product
+    cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
 
-    if magnitude_ball == 0 or magnitude_front == 0:
-        return "stop"
+    print(f"Angle: {angle_difference:.2f}°, Cross: {cross:.2f}")
 
-    angle_difference = math.degrees(math.acos(dot_product / (magnitude_ball * magnitude_front)))
-
-    cross_product = vector_to_ball[0] * vector_front[1] - vector_to_ball[1] * vector_front[0]
-    if cross_product < 0:
-        angle_difference = -angle_difference
-
-    print(f"Angle Difference: {angle_difference}")
-
-    if abs(angle_difference) < 30:
+    if angle_difference < 15:
         return "forward"
-    elif angle_difference > 0:
-        return "left" 
+    elif cross < 0:
+        return "right"
     else:
-        return "right" 
+        return "left"
+
