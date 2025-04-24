@@ -11,6 +11,8 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind(("0.0.0.0", PORT))
 server_socket.listen(1)
 
+print(f"Server lytter på 0.0.0.0:{PORT}...")
+
 print(f"Waiting for EV3 connection on port {PORT}...")
 
 conn, addr = server_socket.accept()
