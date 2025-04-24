@@ -1,6 +1,7 @@
 import socket
+import time
 import cv2
-from pathfinding import determine_direction, find_best_ball
+from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance
 import numpy as np
 from vision import detect_balls, detect_robot
 from config import EV3_IP, PORT
@@ -22,6 +23,7 @@ print(f"Connection established with EV3 at {addr}")
 cap = cv2.VideoCapture(0) 
 
 last_command = None
+timer = 0
 
 while True:
     ret, frame = cap.read()
@@ -29,7 +31,8 @@ while True:
         print("Camera error, no frame captured")
         continue
 
-    ball_positions = detect_balls(frame)
+
+    
     robot_info = detect_robot(frame)
 
     if robot_info:
@@ -37,13 +40,30 @@ while True:
 
         rx, ry = robot_position  
         fx, fy = front_marker 
+        current_time = time.time()
+        if current_time - timer >= 2:
+            ball_positions = detect_balls(frame)
+            sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
+            timer = current_time       
 
-        best_ball = find_best_ball(ball_positions, robot_position, front_marker)
+            if sorted_balls:
+                best_ball = sorted_balls[0]
+            else:
+                best_ball = None
+
+         # Remove collected balls
+        COLLECTION_RADIUS = 20  # adjust this threshold
+        ball_positions = [
+            (x, y, r) for (x, y, r) in ball_positions
+            if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
+        ]
+
 
         movement_command = determine_direction(robot_info, best_ball)
 
         if movement_command != last_command:
             print(f"Sending command:  {movement_command}")
+
             conn.sendall(movement_command.encode()) 
             last_command = movement_command
 
@@ -64,6 +84,8 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
+#movement_command = "quit"
+#conn.sendall(movement_command.encode())
 cap.release()
 cv2.destroyAllWindows()
 conn.close()

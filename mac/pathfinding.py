@@ -2,6 +2,23 @@ import math
 
 previous_best_ball = None
 
+def sort_balls_by_distance(ball_positions, front_marker):
+    """
+    Returns a list of balls sorted by distance to the robot's front.
+    Each ball is a tuple: (x, y, r)
+    """
+    if not ball_positions or not front_marker:
+        return []
+
+    fx, fy = front_marker
+
+    # Sort the balls based on distance to the front_marker
+    sorted_balls = sorted(
+        ball_positions,
+        key=lambda ball: math.hypot(ball[0] - fx, ball[1] - fy)
+    )
+
+    return sorted_balls
 
 def find_best_ball(ball_positions, robot_position, front_marker):
     global previous_best_ball
@@ -67,7 +84,7 @@ def determine_direction(robot_position, ball_position):
 
     print(f"Angle: {angle_difference:.2f}°, Cross: {cross:.2f}")
 
-    if angle_difference < 15:
+    if angle_difference < 5:
         return "forward"
     elif cross < 0:
         return "right"

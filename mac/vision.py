@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+
+
 def detect_balls(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -20,8 +22,10 @@ def detect_balls(frame):
         perimeter = cv2.arcLength(cnt, True)
         area = cv2.contourArea(cnt)
         circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
+        
 
-        if 0.8 < circularity < 1.2 and radius > 10:
+        if 0.7 < circularity < 1 and 19 > radius > 14:
+            print(circularity)
             ball_positions.append((int(x), int(y), int(radius)))
 
     return ball_positions
