@@ -1,22 +1,25 @@
 import cv2
 import numpy as np
 
-
-
 def detect_balls(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     lower_white = np.array([0, 0, 180])
     upper_white = np.array([180, 80, 255])
+    lower_orange = np.array([5, 100, 100])
+    upper_orange = np.array([20, 255, 255])
 
-    mask = cv2.inRange(hsv, lower_white, upper_white)
+    mask_white = cv2.inRange(hsv, lower_white, upper_white)
+    mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
 
-    cv2.imshow("White Color Mask", mask)
+    cv2.imshow("White Color Mask", mask_white)
+    cv2.imshow("Orange Color Mask", mask_orange)
 
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_white, _ = cv2.findContours(mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     ball_positions = []
-    for cnt in contours:
+    for cnt in contours_orange:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
 
         perimeter = cv2.arcLength(cnt, True)
@@ -26,7 +29,20 @@ def detect_balls(frame):
 
         if 0.7 < circularity < 1 and 19 > radius > 14:
             print(circularity)
-            ball_positions.append((int(x), int(y), int(radius)))
+            ball_positions.append((int(x), int(y), int(radius), 1))
+    
+    for cnt in contours_white:
+        (x, y), radius = cv2.minEnclosingCircle(cnt)
+
+        perimeter = cv2.arcLength(cnt, True)
+        area = cv2.contourArea(cnt)
+        circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
+        
+
+        if 0.7 < circularity < 1 and 19 > radius > 14:
+            print(circularity)
+            ball_positions.append((int(x), int(y), int(radius), 0))
+
 
     return ball_positions
 

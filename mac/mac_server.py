@@ -30,8 +30,6 @@ while True:
     if not ret:
         print("Camera error, no frame captured")
         continue
-
-
     
     robot_info = detect_robot(frame)
 

@@ -3,19 +3,17 @@ import math
 previous_best_ball = None
 
 def sort_balls_by_distance(ball_positions, front_marker):
-    """
-    Returns a list of balls sorted by distance to the robot's front.
-    Each ball is a tuple: (x, y, r)
-    """
     if not ball_positions or not front_marker:
         return []
 
     fx, fy = front_marker
 
-    # Sort the balls based on distance to the front_marker
     sorted_balls = sorted(
         ball_positions,
-        key=lambda ball: math.hypot(ball[0] - fx, ball[1] - fy)
+        key=lambda ball: (
+            0 if ball[3] == 1 else 1,
+            math.hypot(ball[0] - fx, ball[1] - fy)
+            )
     )
 
     return sorted_balls
