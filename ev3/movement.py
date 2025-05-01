@@ -1,7 +1,7 @@
-from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, SpeedPercent, LargeMotor
+from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D, SpeedPercent, LargeMotor
 
 tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
-collector = LargeMotor(OUTPUT_C)
+collector = LargeMotor(OUTPUT_D)
 
 collector.on(SpeedPercent(-35))
 
@@ -15,11 +15,11 @@ def move_robot(direction):
 
     elif direction == "left":
         print("Turning left")
-        tank_drive.on(SpeedPercent(-40), SpeedPercent(40)) 
+        tank_drive.on(SpeedPercent(-25), SpeedPercent(25)) 
 
     elif direction == "right":
         print("Turning right")
-        tank_drive.on(SpeedPercent(40), SpeedPercent(-40)) 
+        tank_drive.on(SpeedPercent(25), SpeedPercent(-25)) 
 
     elif direction == "stop":
         print("Stopping")
