@@ -89,3 +89,9 @@ def determine_direction(robot_position, ball_position):
     else:
         return "left"
 
+
+def point_rect_distance(px, py, rect):
+    x, y, w, h = rect
+    dx = max(x - px, 0, px - (x + w))
+    dy = max(y - py, 0, py - (y + h))
+    return math.hypot(dx, dy)
