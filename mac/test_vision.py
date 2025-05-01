@@ -27,7 +27,7 @@ while True:
         print("Ball position:", ball_positions)
         last_print_time = time.time()
 
-    for (x, y, radius) in ball_positions:
+    for (x, y, radius, color) in ball_positions:
         cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
         cv2.putText(frame, "Ball", (x-20, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 

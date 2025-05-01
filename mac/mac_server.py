@@ -52,7 +52,7 @@ while True:
          # Remove collected balls
         COLLECTION_RADIUS = 20  # adjust this threshold
         ball_positions = [
-            (x, y, r) for (x, y, r) in ball_positions
+            (x, y, r, o) for (x, y, r, o) in ball_positions
             if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
         ]
 
@@ -65,7 +65,7 @@ while True:
             conn.sendall(movement_command.encode()) 
             last_command = movement_command
 
-        for (x, y, r) in ball_positions: 
+        for (x, y, r, o) in ball_positions: 
             cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)  
             cv2.putText(frame, "Ball", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
