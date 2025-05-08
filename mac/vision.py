@@ -6,8 +6,8 @@ def detect_balls(frame):
 
     lower_white = np.array([0, 0, 180])
     upper_white = np.array([180, 80, 255])
-    lower_orange = np.array([12, 85, 230])
-    upper_orange = np.array([32, 255, 255])
+    lower_orange = np.array([5, 100, 100])
+    upper_orange = np.array([20, 255, 255])
 
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
     mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
@@ -27,7 +27,7 @@ def detect_balls(frame):
         circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
         
 
-        if 0.6 < circularity < 1 and 19 > radius > 13:
+        if 0.7 < circularity < 1 and 19 > radius > 14:
             ball_positions.append((int(x), int(y), int(radius), 1))
     
     for cnt in contours_white:
@@ -47,42 +47,40 @@ def detect_balls(frame):
 def detect_robot(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    lower_back = np.array([60, 50, 60])
-    upper_back = np.array([90, 255, 235])
+    lower_green = np.array([60, 100, 100])
+    upper_green = np.array([85, 255, 255])
+    mask_green = cv2.inRange(hsv, lower_green, upper_green) 
 
-    mask_back = cv2.inRange(hsv, lower_back, upper_back) 
-
-    lower_front = np.array([95, 90, 60])
-    upper_front = np.array([120, 255, 255])
-
+    lower_front = np.array([95, 100, 100])
+    upper_front = np.array([110, 255, 255])
     mask_front = cv2.inRange(hsv, lower_front, upper_front)
 
     kernel = np.ones((7, 7), np.uint8)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_OPEN, kernel)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_CLOSE, kernel)
+    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
+    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
     
     mask_front = cv2.morphologyEx(mask_front, cv2.MORPH_OPEN, kernel)
     mask_front = cv2.morphologyEx(mask_front, cv2.MORPH_CLOSE, kernel)
 
-    cv2.imshow("Back Color Mask", mask_back)
+    cv2.imshow("Green Color Mask", mask_green)
     cv2.imshow("Front Mask", mask_front)
 
-    contours_back, _ = cv2.findContours(mask_back, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours_front, _ = cv2.findContours(mask_front, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     robot_position = None
     front_marker_position = None
 
-    if contours_back:
-        largest_contour = max(contours_back, key=cv2.contourArea)
+    if contours_green:
+        largest_contour = max(contours_green, key=cv2.contourArea)
         (x, y), radius = cv2.minEnclosingCircle(largest_contour)
 
-        if radius > 0.2:
+        if radius > 2:
             robot_position = (int(x), int(y))
 
     if contours_front:
         (x, y), radius = cv2.minEnclosingCircle(max(contours_front, key=cv2.contourArea))
-        if radius > 0.2:
+        if radius > 2:
             front_marker_position = (int(x), int(y))
 
     robot_orientation = None
@@ -98,9 +96,9 @@ def detect_robot(frame):
 def detect_barriers(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
+    # Rød farve: to områder pga. HSV wraparound
     lower_red1 = np.array([0, 120, 150])
     upper_red1 = np.array([10, 255, 255])
-
     lower_red2 = np.array([170, 120, 150])
     upper_red2 = np.array([180, 255, 255])
 
@@ -108,6 +106,7 @@ def detect_barriers(frame):
     mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
     mask = cv2.bitwise_or(mask1, mask2)
 
+    # Rens masken
     kernel = np.ones((7, 7), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -117,10 +116,13 @@ def detect_barriers(frame):
 
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        if w > 10 and h > 10: 
+        area = w * h
+
+        # Behold store barrierer (fx hele rammen)
+        if w > 10 and h > 10:
             cx = x + w // 2
             cy = y + h // 2
             barriers.append(((x, y, w, h), (cx, cy)))
 
-
     return barriers
+

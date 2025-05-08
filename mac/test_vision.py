@@ -23,11 +23,11 @@ while True:
     # --- Calculate staging points ---
     staged_balls = []
     for ball in ball_positions:
-        if is_corner_ball(ball, barriers):
-            staged = create_staging_point_corner(ball, barriers)
+        if is_corner_ball(ball):
+            staged = create_staging_point_corner(ball)
             staged_balls.append(staged)
-        elif is_edge_ball(ball, barriers):
-            staged = create_staging_point_edge(ball, barriers)
+        elif is_edge_ball(ball):
+            staged = create_staging_point_edge(ball)
             staged_balls.append(staged)
 
     # --- Print debug info every 5 seconds ---
@@ -65,7 +65,8 @@ while True:
         cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
 
     # --- Draw barriers ---
-    for (x, y, w, h) in barriers:
+    for (rect, _) in barriers:
+        x, y, w, h = rect
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
         cv2.putText(frame, "Barrier", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 

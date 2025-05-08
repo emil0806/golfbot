@@ -92,9 +92,22 @@ def determine_direction(robot_position, ball_position):
 
 def point_rect_distance(px, py, rect):
     x, y, w, h = rect
+
+    # Hvis punktet er inde i rektanglen, find afstand til nærmeste kant
+    if x <= px <= x + w and y <= py <= y + h:
+        distances = [
+            abs(px - x),           # venstre
+            abs(px - (x + w)),     # højre
+            abs(py - y),           # top
+            abs(py - (y + h))      # bund
+        ]
+        return min(distances)
+    
+    # Ellers som normalt
     dx = max(x - px, 0, px - (x + w))
     dy = max(y - py, 0, py - (y + h))
     return math.hypot(dx, dy)
+
 
 def check_barrier_proximity(point, barriers, threshold=60):
     px, py = point
@@ -104,41 +117,72 @@ def check_barrier_proximity(point, barriers, threshold=60):
             return True
     return False
 
-def is_edge_ball(ball, barriers, threshold=60):
-    return any(point_rect_distance(ball[0], ball[1], rect) < threshold for rect, _ in barriers)
+def is_corner_ball(ball, margin=100):
+    x, y, _, _ = ball
 
-def is_corner_ball(ball, barriers, threshold=60):
-    near_sides = [point_rect_distance(ball[0], ball[1], rect) < threshold for rect, _ in barriers]
-    return near_sides.count(True) >= 2
+    in_top_left     = (x < 250 + margin and y < 50 + margin)
+    in_top_right    = (x > 1600 - margin and y < 50 + margin)
+    in_bottom_left  = (x < 250 + margin and y > 1050 - margin)
+    in_bottom_right = (x > 1600 - margin and y > 1050 - margin)
 
-def create_staging_point_edge(ball, barriers):
+    return in_top_left or in_top_right or in_bottom_left or in_bottom_right
+
+
+def is_edge_ball(ball, margin=100):
+    x, y, _, _ = ball
+
+    # check each edge, ignoring corners (corners are covered by is_corner_ball)
+    near_left   = 250 - margin < x < 250 + margin and 50 + margin < y < 1050 - margin
+    near_right  = 1600 - margin < x < 1600 + margin and 50 + margin < y < 1050 - margin
+    near_top    = 50 - margin < y < 50 + margin and 250 + margin < x < 1600 - margin
+    near_bottom = 1050 - margin < y < 1050 + margin and 250 + margin < x < 1600 - margin
+
+    return near_left or near_right or near_top or near_bottom
+
+
+
+def create_staging_point_edge(ball, offset_distance=300):
     x, y, r, o = ball
-    offset = 100
-    for rect, _ in barriers:
-        if point_rect_distance(x, y, rect) < 60:
-            bx, by, bw, bh = rect
-            cx = bx + bw // 2
-            cy = by + bh // 2
-            dx, dy = y - cy, -(x - cx)  # 90 degree turn
-            mag = math.hypot(dx, dy)
-            if mag == 0:
-                continue
-            nx, ny = dx / mag, dy / mag
-            return (int(x + nx * offset), int(y + ny * offset), r, o)
-    return ball
 
-def create_staging_point_corner(ball, barriers):
+    # Venstre kant
+    if x < 400:
+        return (x + offset_distance, y, r, o)
+    # Højre kant
+    elif x > 1200:
+        return (x - offset_distance, y, r, o)
+    # Øverste kant
+    elif y < 400:
+        return (x, y + offset_distance, r, o)
+    # Nederste kant
+    elif y > 800:
+        return (x, y - offset_distance, r, o)
+
+    # Fallback – midt i banen
+    return (x - offset_distance, y - offset_distance, r, o)
+
+
+def create_staging_point_corner(ball, offset_distance=200):
     x, y, r, o = ball
-    offset = 100
-    closest = min(barriers, key=lambda b: point_rect_distance(x, y, b[0]))
-    bx, by, bw, bh = closest[0]
-    cx, cy = bx + bw // 2, by + bh // 2
-    dx, dy = x - cx, y - cy
-    mag = math.hypot(dx, dy)
-    if mag == 0:
-        return ball
-    nx, ny = dx / mag, dy / mag
-    return (int(x + nx * offset), int(y + ny * offset), r, o)
+
+    # Koordinatsystem: 0,0 = øverste venstre hjørne
+    if x < 500 and y < 500:
+        # Øverste venstre hjørne
+        return (x + offset_distance, y + offset_distance, r, o)
+    elif x > 1000 and y < 500:
+        # Øverste højre hjørne
+        return (x - offset_distance, y + offset_distance, r, o)
+    elif x < 500 and y > 500:
+        # Nederste venstre hjørne
+        return (x + offset_distance, y - offset_distance, r, o)
+    elif x > 1000 and y > 500:
+        # Nederste højre hjørne
+        return (x - offset_distance, y - offset_distance, r, o)
+    
+    # Fallback: staging lidt opad
+    return (x, y - offset_distance, r, o)
+
+
+
 
 def delivery_routine(robot_info):
     # Simple placeholder routine
