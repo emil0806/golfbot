@@ -52,8 +52,8 @@ def detect_robot(frame):
 
     mask_back = cv2.inRange(hsv, lower_back, upper_back) 
 
-    lower_front = np.array([95, 90, 60])
-    upper_front = np.array([120, 255, 255])
+    lower_front = np.array([100, 240, 230])
+    upper_front = np.array([108, 255, 255])
 
     mask_front = cv2.inRange(hsv, lower_front, upper_front)
 
