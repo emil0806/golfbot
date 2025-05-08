@@ -95,3 +95,53 @@ def point_rect_distance(px, py, rect):
     dx = max(x - px, 0, px - (x + w))
     dy = max(y - py, 0, py - (y + h))
     return math.hypot(dx, dy)
+
+def check_barrier_proximity(point, barriers, threshold=60):
+    px, py = point
+    for (rect, center) in barriers:
+        distance = point_rect_distance(px, py, rect)
+        if distance < threshold:
+            return True
+    return False
+
+def is_edge_ball(ball, barriers, threshold=60):
+    return any(point_rect_distance(ball[0], ball[1], rect) < threshold for rect, _ in barriers)
+
+def is_corner_ball(ball, barriers, threshold=60):
+    near_sides = [point_rect_distance(ball[0], ball[1], rect) < threshold for rect, _ in barriers]
+    return near_sides.count(True) >= 2
+
+def create_staging_point_edge(ball, barriers):
+    x, y, r, o = ball
+    offset = 100
+    for rect, _ in barriers:
+        if point_rect_distance(x, y, rect) < 60:
+            bx, by, bw, bh = rect
+            cx = bx + bw // 2
+            cy = by + bh // 2
+            dx, dy = y - cy, -(x - cx)  # 90 degree turn
+            mag = math.hypot(dx, dy)
+            if mag == 0:
+                continue
+            nx, ny = dx / mag, dy / mag
+            return (int(x + nx * offset), int(y + ny * offset), r, o)
+    return ball
+
+def create_staging_point_corner(ball, barriers):
+    x, y, r, o = ball
+    offset = 100
+    closest = min(barriers, key=lambda b: point_rect_distance(x, y, b[0]))
+    bx, by, bw, bh = closest[0]
+    cx, cy = bx + bw // 2, by + bh // 2
+    dx, dy = x - cx, y - cy
+    mag = math.hypot(dx, dy)
+    if mag == 0:
+        return ball
+    nx, ny = dx / mag, dy / mag
+    return (int(x + nx * offset), int(y + ny * offset), r, o)
+
+def delivery_routine(robot_info):
+    # Simple placeholder routine
+    # Go forward to an approach point, turn, then reverse
+    return "forward"
+

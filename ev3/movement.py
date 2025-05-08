@@ -19,7 +19,12 @@ def move_robot(direction):
 
     elif direction == "right":
         print("Turning right")
-        tank_drive.on(SpeedPercent(25), SpeedPercent(-25)) 
+        tank_drive.on(SpeedPercent(25), SpeedPercent(-25))
+
+    elif direction == "backward":
+        print("Reversing")
+        tank_drive.on(SpeedPercent(-50), SpeedPercent(-50))
+    
 
     elif direction == "stop":
         print("Stopping")

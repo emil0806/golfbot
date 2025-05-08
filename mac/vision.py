@@ -118,6 +118,9 @@ def detect_barriers(frame):
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
         if w > 10 and h > 10: 
-            barriers.append((x, y, w, h))
+            cx = x + w // 2
+            cy = y + h // 2
+            barriers.append(((x, y, w, h), (cx, cy)))
+
 
     return barriers
