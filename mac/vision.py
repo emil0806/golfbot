@@ -1,89 +1,101 @@
 import cv2
 import numpy as np
 
+import cv2
+import numpy as np
+
 def detect_balls(frame):
+    blurred = cv2.GaussianBlur(frame, (5, 5), 0)
+    gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+
+    # Use adaptive thresholding to handle changing lighting
+    thresh = cv2.adaptiveThreshold(
+        gray, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        11, 3
+    )
+
+    cv2.imshow("Adaptive Threshold", thresh)
+
+    # Find contours in the thresholded image
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    cv2.drawContours(frame, contours, -1, (0, 255, 255), 1)
+
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    lower_white = np.array([0, 0, 180])
-    upper_white = np.array([100, 100, 255])
-    lower_orange = np.array([12, 85, 230])
-    upper_orange = np.array([32, 255, 255])
-
-    mask_white = cv2.inRange(hsv, lower_white, upper_white)
-    mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
-
-    cv2.imshow("White Color Mask", mask_white)
-    cv2.imshow("Orange Color Mask", mask_orange)
-
-    contours_white, _ = cv2.findContours(mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     ball_positions = []
-    for cnt in contours_orange:
+
+    for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
-
-        perimeter = cv2.arcLength(cnt, True)
         area = cv2.contourArea(cnt)
-        circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
-        
-
-        if 0.6 < circularity < 1 and 19 > radius > 13:
-            ball_positions.append((int(x), int(y), int(radius), 1))
-    
-    for cnt in contours_white:
-        (x, y), radius = cv2.minEnclosingCircle(cnt)
-
         perimeter = cv2.arcLength(cnt, True)
-        area = cv2.contourArea(cnt)
-        circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
-        
 
-        if 0.6 < circularity < 1 and 19 > radius > 13:
-            ball_positions.append((int(x), int(y), int(radius), 0))
+        if perimeter == 0:
+            continue
 
+        circularity = 4 * np.pi * (area / (perimeter * perimeter))
 
+        # Shape filter: must be round and reasonably sized
+        if 0.4 < circularity < 1.4 and 10 < radius < 30:
+            # Create a mask for this circle
+            mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+            cv2.circle(mask, (int(x), int(y)), int(radius), 255, -1)
+
+            # Sample mean HSV inside the circle
+            mean_hsv = cv2.mean(hsv, mask=mask)
+            h, s, v, _ = mean_hsv
+
+            # Classify color based on average HSV
+            if 0 < h < 40 and s > 70 and v > 150:
+                color = 1  # orange
+            elif s < 80 and v > 180:
+                color = 0  # white
+            else:
+                color = 0  # discard unclassified object
+
+            ball_positions.append((int(x), int(y), int(radius), color))
+
+    print(f"Balls: {ball_positions}")
     return ball_positions
 
+
 def detect_robot(frame):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    blurred = cv2.GaussianBlur(frame, (5, 5), 0)
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
-    lower_back = np.array([30, 40, 140])
-    upper_back = np.array([90, 255, 235])
-
-    mask_back = cv2.inRange(hsv, lower_back, upper_back) 
-
-    lower_front = np.array([90, 120, 140])
-    upper_front = np.array([120, 255, 255])
-
-    mask_front = cv2.inRange(hsv, lower_front, upper_front)
-
-    kernel = np.ones((7, 7), np.uint8)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_OPEN, kernel)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_CLOSE, kernel)
-    
-    mask_front = cv2.morphologyEx(mask_front, cv2.MORPH_OPEN, kernel)
-    mask_front = cv2.morphologyEx(mask_front, cv2.MORPH_CLOSE, kernel)
-
-    cv2.imshow("Back Color Mask", mask_back)
-    cv2.imshow("Front Mask", mask_front)
-
-    contours_back, _ = cv2.findContours(mask_back, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_front, _ = cv2.findContours(mask_front, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(gray, 60, 255, cv2.THRESH_BINARY_INV)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     robot_position = None
     front_marker_position = None
 
-    if contours_back:
-        largest_contour = max(contours_back, key=cv2.contourArea)
-        (x, y), radius = cv2.minEnclosingCircle(largest_contour)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < 50:
+            continue
 
-        if radius > 0.05:
-            robot_position = (int(x), int(y))
+        approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
+        corners = len(approx)
 
-    if contours_front:
-        (x, y), radius = cv2.minEnclosingCircle(max(contours_front, key=cv2.contourArea))
-        if radius > 0.05:
-            front_marker_position = (int(x), int(y))
+        (x, y), radius = cv2.minEnclosingCircle(cnt)
+        center = (int(x), int(y))
+
+        # Create mask for this shape to sample HSV
+        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+        cv2.drawContours(mask, [cnt], -1, 255, -1)
+        mean_hsv = cv2.mean(hsv, mask=mask)
+        h, s, v, _ = mean_hsv
+
+        # Detect front marker (blue triangle)
+        if corners == 3 and 80 < h < 150 and s > 100:
+            front_marker_position = center
+
+        # Detect back marker (green square)
+        elif corners == 4 and 40 < h < 100 and s > 40:
+            robot_position = center
+
 
     robot_orientation = None
     if robot_position and front_marker_position:
