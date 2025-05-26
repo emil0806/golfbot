@@ -126,3 +126,29 @@ def detect_barriers(frame):
 
     return barriers
 
+
+def detect_egg(frame):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    lower_white = np.array([0, 0, 180])
+    upper_white = np.array([180, 80, 255])
+
+    mask_white = cv2.inRange(hsv, lower_white, upper_white)
+
+    contours_white, _ = cv2.findContours(mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    egg = []
+
+    for cnt in contours_white:
+        (x, y), radius = cv2.minEnclosingCircle(cnt)
+
+        perimeter = cv2.arcLength(cnt, True)
+        area = cv2.contourArea(cnt)
+        circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
+        
+
+        if 0.8 < circularity and radius > 20:
+            egg.append((int(x), int(y), int(radius), 0))
+
+
+    return egg

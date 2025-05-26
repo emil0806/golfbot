@@ -1,10 +1,11 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, delivery_routine
+from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, delivery_routine, stop_delivery_routine
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers
 from config import EV3_IP, PORT
+import time
 
 
 # Initialize socket server to send data to EV3
@@ -52,18 +53,30 @@ while True:
                 if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
             ]
 
-            if len(ball_positions) not in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]:
+            
+            # Main loop
+            if len(ball_positions) > 11:
                 command = delivery_routine(robot_info)
                 if command != last_command:
+                    conn.sendall(command.encode())
+                    last_command = command
+                    
+                    time.sleep(5) 
+
+                    command = stop_delivery_routine()
                     conn.sendall(command.encode())
                     last_command = command
                 continue
 
 
+            pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
             staged_balls = []
 
-            for (x, y, r, o) in ball_positions:
+            for i, (x, y, r, o) in enumerate(pre_sorted_balls):
                 ball = (x, y, r, o)
+
+                if i == 0:
+                    continue
 
                 # Lav staging-punkt hvis bolden er i hjørne eller ved kant
                 if is_corner_ball(ball):
@@ -87,7 +100,7 @@ while True:
                 angle_diff = np.degrees(np.arccos(cos_theta))
 
                 # Kun tilføj staging hvis robotten IKKE er tæt nok eller IKKE har god vinkel
-                if staging_dist > 50 or angle_diff > 5:
+                if (staging_dist > 50 or angle_diff > 5):
                     staged_balls.append(staging)
 
             # Brug staged_balls (de indeholder staging points ELLER almindelige bolde)

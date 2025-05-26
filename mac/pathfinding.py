@@ -117,7 +117,7 @@ def check_barrier_proximity(point, barriers, threshold=60):
             return True
     return False
 
-def is_corner_ball(ball, margin=100):
+def is_corner_ball(ball, margin=150):
     x, y, _, _ = ball
 
     in_top_left     = (x < 250 + margin and y < 50 + margin)
@@ -128,7 +128,7 @@ def is_corner_ball(ball, margin=100):
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
 
 
-def is_edge_ball(ball, margin=100):
+def is_edge_ball(ball, margin=150):
     x, y, _, _ = ball
 
     # check each edge, ignoring corners (corners are covered by is_corner_ball)
@@ -187,5 +187,7 @@ def create_staging_point_corner(ball, offset_distance=200):
 def delivery_routine(robot_info):
     # Simple placeholder routine
     # Go forward to an approach point, turn, then reverse
-    return "forward"
+    return "delivery"
 
+def stop_delivery_routine():
+    return "continue"
