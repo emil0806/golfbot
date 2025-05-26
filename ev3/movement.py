@@ -11,15 +11,15 @@ def move_robot(direction):
 
     if direction == "forward":
         print("Moving forward")
-        tank_drive.on(SpeedPercent(30), SpeedPercent(30)) 
+        tank_drive.on(SpeedPercent(40), SpeedPercent(40)) 
 
     elif direction == "left":
         print("Turning left")
-        tank_drive.on(SpeedPercent(-10), SpeedPercent(10)) 
+        tank_drive.on(SpeedPercent(-8), SpeedPercent(8)) 
 
     elif direction == "right":
         print("Turning right")
-        tank_drive.on(SpeedPercent(10), SpeedPercent(-10)) 
+        tank_drive.on(SpeedPercent(8), SpeedPercent(-8)) 
 
     elif direction == "stop":
         print("Stopping")

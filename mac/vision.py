@@ -5,7 +5,7 @@ def detect_balls(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     lower_white = np.array([0, 0, 180])
-    upper_white = np.array([180, 80, 255])
+    upper_white = np.array([100, 100, 255])
     lower_orange = np.array([12, 85, 230])
     upper_orange = np.array([32, 255, 255])
 
@@ -38,7 +38,7 @@ def detect_balls(frame):
         circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
         
 
-        if 0.7 < circularity < 1 and 19 > radius > 14:
+        if 0.6 < circularity < 1 and 19 > radius > 13:
             ball_positions.append((int(x), int(y), int(radius), 0))
 
 
@@ -47,13 +47,13 @@ def detect_balls(frame):
 def detect_robot(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    lower_back = np.array([60, 50, 60])
+    lower_back = np.array([30, 40, 140])
     upper_back = np.array([90, 255, 235])
 
     mask_back = cv2.inRange(hsv, lower_back, upper_back) 
 
-    lower_front = np.array([100, 240, 230])
-    upper_front = np.array([108, 255, 255])
+    lower_front = np.array([90, 120, 140])
+    upper_front = np.array([120, 255, 255])
 
     mask_front = cv2.inRange(hsv, lower_front, upper_front)
 
@@ -77,12 +77,12 @@ def detect_robot(frame):
         largest_contour = max(contours_back, key=cv2.contourArea)
         (x, y), radius = cv2.minEnclosingCircle(largest_contour)
 
-        if radius > 0.2:
+        if radius > 0.05:
             robot_position = (int(x), int(y))
 
     if contours_front:
         (x, y), radius = cv2.minEnclosingCircle(max(contours_front, key=cv2.contourArea))
-        if radius > 0.2:
+        if radius > 0.05:
             front_marker_position = (int(x), int(y))
 
     robot_orientation = None

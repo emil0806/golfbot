@@ -38,25 +38,14 @@ while True:
 
         rx, ry = robot_position  
         fx, fy = front_marker 
-        current_time = time.time()
-        if current_time - timer >= 2:
-            ball_positions = detect_balls(frame)
-            sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
-            timer = current_time       
+        ball_positions = detect_balls(frame)
+        sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
 
-            if sorted_balls:
-                best_ball = sorted_balls[0]
-            else:
-                best_ball = None
-
-         # Remove collected balls
-        COLLECTION_RADIUS = 20  # adjust this threshold
-        ball_positions = [
-            (x, y, r, o) for (x, y, r, o) in ball_positions
-            if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
-        ]
-
-
+        if sorted_balls:
+            best_ball = sorted_balls[0]
+        else:
+          best_ball = None
+           
         movement_command = determine_direction(robot_info, best_ball)
 
         if movement_command != last_command:
@@ -65,7 +54,7 @@ while True:
             conn.sendall(movement_command.encode()) 
             last_command = movement_command
 
-        for (x, y, r, o) in ball_positions: 
+        for (x, y, r, o) in sorted_balls: 
             cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)  
             cv2.putText(frame, "Ball", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
