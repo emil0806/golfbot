@@ -15,11 +15,10 @@ while True:
     if not ret:
         print("Error: Could not capture image")
         continue
-
-    ball_positions = detect_balls(frame)
+    egg = detect_egg(frame)
+    ball_positions = detect_balls(frame, egg)
     barriers = detect_barriers(frame)
     robot_info = detect_robot(frame)
-    egg = detect_egg(frame)
 
     # --- Calculate staging points ---
     staged_balls = []
@@ -72,8 +71,8 @@ while True:
         cv2.putText(frame, "Barrier", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
     for (x, y, radius, color) in egg:
-        cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
-        cv2.putText(frame, "Egg", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.circle(frame, (x, y), int(radius), (0, 0, 255), 2)
+        cv2.putText(frame, "Egg", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
     cv2.imshow("Staging Ball Test", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):

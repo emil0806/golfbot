@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
 
+egg_location = []
 
-def detect_balls(frame):
+def detect_balls(frame, egg):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -66,8 +67,11 @@ def detect_balls(frame):
                 0.8 < aspect_ratio < 1.2 and
                 area > 150
             ):
-                ball_positions.append((x, y, radius, color_id))
-
+                
+                # Tjek at bold ikke er inde i et æg
+                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+                if not is_inside_egg:
+                    ball_positions.append((x, y, radius, color_id))
     # Konturfiltrering
     filter_contours(contours_orange, 1)
     filter_contours(contours_white, 0)
@@ -101,10 +105,12 @@ def detect_balls(frame):
             # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
-            if is_white:
-                ball_positions.append((x, y, r, 0))  # 0 = hvid
-            elif is_orange:
-                ball_positions.append((x, y, r, 1))  # 1 = orange
+            is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+            if not is_inside_egg:
+                if is_white:
+                    ball_positions.append((x, y, r, 0))
+                elif is_orange:
+                    ball_positions.append((x, y, r, 1))
 
     return ball_positions
 
@@ -217,5 +223,5 @@ def detect_egg(frame):
         if 0.8 < circularity and radius > 20:
             egg.append((int(x), int(y), int(radius), 0))
 
-
+    egg_location = egg
     return egg

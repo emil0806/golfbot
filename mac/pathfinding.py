@@ -182,7 +182,52 @@ def create_staging_point_corner(ball, offset_distance=200):
     return (x, y - offset_distance, r, o)
 
 
+# ------------------ ÆG-UNDVIGELSE ------------------
 
+def _point_to_segment_distance(px, py, x1, y1, x2, y2):
+    """Korteste afstand fra punkt (px,py) til linjesegment (x1,y1)-(x2,y2)."""
+    if (x1, y1) == (x2, y2):
+        return math.hypot(px - x1, py - y1)
+    dx, dy = x2 - x1, y2 - y1
+    t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)))
+    proj_x, proj_y = x1 + t*dx, y1 + t*dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def egg_blocks_path(robot_center, ball, egg, threshold=60):
+    """
+    Returnerer True hvis ægget ligger < threshold fra linjen
+    robot_center → bold.
+    """
+    rx, ry = robot_center
+    bx, by = ball[:2]
+    ex, ey, er = egg  # er = æg-radius
+    dist = _point_to_segment_distance(ex, ey, rx, ry, bx, by)
+    return dist < threshold + er
+
+
+def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
+    """
+    Laver et staging-punkt vinkelret på banen omkring ægget,
+    så robotten kan køre uden om.
+    """
+    rx, ry = robot_center
+    bx, by = ball[:2]
+    ex, ey, er = egg
+
+    # vektor robot → bold
+    vx, vy = bx - rx, by - ry
+    # vinkelret enhedsvektor
+    perp_x, perp_y = -vy, vx
+    mag = math.hypot(perp_x, perp_y) or 1.0
+    perp_x, perp_y = perp_x / mag, perp_y / mag
+
+    # staging-punkt forskudt fra ægget
+    sx = ex + perp_x * (er + offset_distance)
+    sy = ey + perp_y * (er + offset_distance)
+
+    # radius 15 er fint til visualisering; farve-id bevares fra bolden
+    return (int(sx), int(sy), 15, ball[3])
 
 def delivery_routine(robot_info):
     # Simple placeholder routine
