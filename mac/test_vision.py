@@ -28,8 +28,19 @@ while True:
         last_print_time = time.time()
 
     for (x, y, radius, color) in ball_positions:
-        cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
-        cv2.putText(frame, "Ball", (x-20, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        if color == 0:  # white ball
+            circle_color = (0, 255, 0)  # green
+            label = "White"
+        elif color == 1:  # orange ball
+            circle_color = (255, 0, 0)  # blue
+            label = "Orange"
+        else:
+            circle_color = (0, 0, 0)
+            label = "Unknown"
+
+        cv2.circle(frame, (x, y), int(radius), circle_color, 2)
+        cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, circle_color, 2)
+
 
     if robot_info:
         robot_position, front_marker, direction = robot_info

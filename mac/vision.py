@@ -16,6 +16,10 @@ def detect_balls(frame):
         11, 3
     )
 
+    kernel = np.ones((3, 3), np.uint8)
+    thresh = cv2.erode(thresh, kernel, iterations=1)
+    thresh = cv2.dilate(thresh, kernel, iterations=1)
+
     cv2.imshow("Adaptive Threshold", thresh)
 
     # Find contours in the thresholded image
@@ -37,8 +41,8 @@ def detect_balls(frame):
         circularity = 4 * np.pi * (area / (perimeter * perimeter))
 
         # Shape filter: must be round and reasonably sized
-        if 0.3 < circularity < 1.8 and 18 < radius < 30:
-            print(f"circle: {circularity}, radius: {radius}")
+        if 0.4 < circularity < 2 and 16 < radius < 25:
+            #print(f"circle: {circularity}, radius: {radius}")
             # Create a mask for this circle
             mask = np.zeros(frame.shape[:2], dtype=np.uint8)
             cv2.circle(mask, (int(x), int(y)), int(radius), 255, -1)
@@ -57,7 +61,7 @@ def detect_balls(frame):
 
             ball_positions.append((int(x), int(y), int(radius), color))
 
-    print(f"Balls: {ball_positions}")
+    #print(f"Balls: {ball_positions}")
     return ball_positions
 
 
