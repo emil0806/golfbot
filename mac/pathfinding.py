@@ -141,7 +141,7 @@ def is_edge_ball(ball, margin=150):
 
 
 
-def create_staging_point_edge(ball, offset_distance=300):
+def create_staging_point_edge(ball, offset_distance=200):
     x, y, r, o = ball
 
     # Venstre kant

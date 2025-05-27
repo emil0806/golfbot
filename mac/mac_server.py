@@ -43,9 +43,7 @@ while True:
         current_time = time.time()
 
         if current_time - timer >= 1:
-            print("test3")
             ball_positions = detect_balls(frame)
-            print(f"ball_pos {ball_positions}")
             barriers = detect_barriers(frame)
             timer = current_time
 
@@ -57,7 +55,6 @@ while True:
 
         
         # Main loop
-        print("test4")
         if len(ball_positions) > 11:
             command = delivery_routine(robot_info)
             if command != last_command:
@@ -72,27 +69,24 @@ while True:
             continue
 
 
-        print("test5")
         pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
+        sorted_balls = pre_sorted_balls
         staged_balls = []
-        print(f"presorted: {pre_sorted_balls}")
 
         for i, (x, y, r, o) in enumerate(pre_sorted_balls):
             ball = (x, y, r, o)
-
-            print("test8")
+            
             # Lav staging-punkt hvis bolden er i hjørne eller ved kant
             if is_corner_ball(ball):
-                print("test6")
                 staging = create_staging_point_corner(ball)
             elif is_edge_ball(ball):
-                print("test7")
                 staging = create_staging_point_edge(ball)
             else:
                 continue  # ingen staging for midterbolde
 
             # --- Check om robotten er tæt på staging-punktet ---
             staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
+            ball_dist = np.linalg.norm(np.array(ball[:2]) - np.array(front_marker))
 
             # --- Check vinkel til bold ---
             robot_vector = np.array(front_marker) - np.array(robot_position)
@@ -104,24 +98,36 @@ while True:
             cos_theta = max(-1, min(1, dot / (mag_r * mag_b + 1e-6)))
             angle_diff = np.degrees(np.arccos(cos_theta))
 
+            # --- Vinkel mellem robot → staging og robot → bold ---
+            staging_vector = np.array(staging[:2]) - np.array(robot_position)
+
+            dot_product = np.dot(staging_vector, ball_vector)
+            norm_staging = np.linalg.norm(staging_vector)
+            norm_ball = np.linalg.norm(ball_vector)
+
+            if norm_staging > 0 and norm_ball > 0:
+                cos_theta = dot_product / (norm_staging * norm_ball)
+                cos_theta = np.clip(cos_theta, -1.0, 1.0)  # avoid numerical errors
+                angle_between_vectors = np.degrees(np.arccos(cos_theta))
+                print(f"Angle between robot→staging and robot→ball: {angle_between_vectors:.2f}°")
+
+            if staging_dist < 80 and angle_diff < 10:
+                continue
+
             # Kun tilføj staging hvis robotten IKKE er tæt nok eller IKKE har god vinkel
-            if (staging_dist > 50 or angle_diff > 5):
+            if ((staging_dist > 80 and angle_diff > 10) or ball_dist > 120):
                 staged_balls.append(staging)
-                pre_sorted_balls.append(staging)
+                sorted_balls.append(staging)     
+            
 
         # Brug staged_balls (de indeholder staging points ELLER almindelige bolde)
-        sorted_balls = sort_balls_by_distance(pre_sorted_balls, front_marker)
-        print(f"sorted: {sorted_balls}")
+        sorted_balls = sort_balls_by_distance(sorted_balls, front_marker)
 
         best_ball = sorted_balls[0] if sorted_balls else None
-        print(f"best: {best_ball}")
-        print("test9")
 
         movement_command = determine_direction(robot_info, best_ball)
-        print(f"command: {movement_command}")
         if movement_command != last_command:
             print(f"Sending command:  {movement_command}")
-            print("test10")
 
             conn.sendall(movement_command.encode()) 
             last_command = movement_command
