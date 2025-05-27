@@ -1,6 +1,6 @@
 import cv2
 import time
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross
 from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
@@ -9,6 +9,7 @@ from pathfinding import (
 
 cap = cv2.VideoCapture(0)
 last_print_time = time.time()
+check = 0
 
 while True:
     ret, frame = cap.read()
@@ -17,9 +18,12 @@ while True:
         continue
 
     ball_positions = detect_balls(frame)
-    barriers = detect_barriers(frame)
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
+    if (check == 0):
+        cross_lines = detect_cross(frame)
+        barriers = detect_barriers(frame)
+        check = 1
 
     # --- Calculate staging points ---
     staged_balls = []
@@ -66,14 +70,19 @@ while True:
         cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
 
     # --- Draw barriers ---
-    for (rect, _) in barriers:
-        x, y, w, h = rect
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-        cv2.putText(frame, "Barrier", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    for (x1, y1, x2, y2), center in barriers:
+        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cx, cy = center
+        cv2.putText(frame, "Barrier", (cx - 20, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
     for (x, y, radius, color) in egg:
         cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
         cv2.putText(frame, "Egg", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    for (x1, y1, x2, y2) in cross_lines:
+        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        cv2.putText(frame, "Barrier", (cx - 15, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
     cv2.imshow("Staging Ball Test", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):

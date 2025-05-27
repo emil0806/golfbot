@@ -163,7 +163,7 @@ def detect_robot(frame):
 def detect_barriers(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # Rød farve: to områder pga. HSV wraparound
+    # Rød farve (HSV wraparound)
     lower_red1 = np.array([0, 120, 150])
     upper_red1 = np.array([10, 255, 255])
     lower_red2 = np.array([170, 120, 150])
@@ -173,26 +173,67 @@ def detect_barriers(frame):
     mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
     mask = cv2.bitwise_or(mask1, mask2)
 
-    # Rens masken
-    kernel = np.ones((7, 7), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    # Let udglatning og edge detection
+    blurred = cv2.GaussianBlur(mask, (3, 3), 0)
+    edges = cv2.Canny(blurred, 50, 150)
 
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Find linjer med Hough Line Transform
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=10)
+
     barriers = []
 
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        area = w * h
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
+            barriers.append(((x1, y1, x2, y2), (cx, cy)))
 
-        # Behold store barrierer (fx hele rammen)
-        if w > 10 and h > 10:
-            cx = x + w // 2
-            cy = y + h // 2
-            barriers.append(((x, y, w, h), (cx, cy)))
+    # Debug
+    cv2.imshow("Barrier Mask", mask)
+    cv2.imshow("Edges", edges)
 
     return barriers
 
+
+def detect_cross(frame):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Rød farveområde
+    lower_red1 = np.array([0, 120, 150])
+    upper_red1 = np.array([10, 255, 255])
+    lower_red2 = np.array([170, 120, 150])
+    upper_red2 = np.array([180, 255, 255])
+
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask = cv2.bitwise_or(mask1, mask2)
+
+    # Kanter og linjedetektion
+    blurred = cv2.GaussianBlur(mask, (3, 3), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+
+    lines = cv2.HoughLinesP(
+            edges,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=20,
+            minLineLength=5,
+            maxLineGap=10
+        )
+    
+    cross_lines = []
+
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cross_lines.append((x1, y1, x2, y2))
+
+    # Debug mask
+    cv2.imshow("Cross Mask", mask)
+    cv2.imshow("Cross Edges", edges)
+
+    return cross_lines  # Liste af linjer
 
 def detect_egg(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
