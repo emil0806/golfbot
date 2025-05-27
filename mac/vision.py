@@ -38,6 +38,7 @@ def detect_balls(frame):
 
         # Shape filter: must be round and reasonably sized
         if 0.4 < circularity < 1.4 and 10 < radius < 30:
+            print(f"circle: {circularity}, radius: {radius}")
             # Create a mask for this circle
             mask = np.zeros(frame.shape[:2], dtype=np.uint8)
             cv2.circle(mask, (int(x), int(y)), int(radius), 255, -1)
