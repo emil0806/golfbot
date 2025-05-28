@@ -1,9 +1,9 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, delivery_routine, stop_delivery_routine
+from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg
 from config import EV3_IP, PORT
 import time
 
@@ -43,7 +43,8 @@ while True:
         current_time = time.time()
 
         if current_time - timer >= 1:
-            ball_positions = detect_balls(frame)
+            egg = detect_egg(frame)
+            ball_positions = detect_balls(frame, egg)
             barriers = detect_barriers(frame)
             timer = current_time
 
@@ -83,6 +84,19 @@ while True:
                 staging = create_staging_point_edge(ball)
             else:
                 continue  # ingen staging for midterbolde
+
+                        # ---------- ÆG-UNDVIGELSE ----------
+            blocked_by_egg = False
+            for (ex, ey, er, _) in egg:
+                if egg_blocks_path(robot_position, ball, (ex, ey, er), threshold=20):
+                    # Lav staging-punkt vinkelret på stien
+                    staging = create_staging_point_egg(robot_position, ball, (ex, ey, er))
+                    staged_balls.append(staging)
+                    sorted_balls.append(staging)
+                    blocked_by_egg = True
+                    break  # ét staging-punkt er nok
+            if blocked_by_egg:
+                continue  # spring direkte til næste bold
 
             # --- Check om robotten er tæt på staging-punktet ---
             staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
@@ -144,6 +158,13 @@ while True:
             cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
             cv2.putText(frame, "Staging", (x - 25, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+
+        # Tegn æg (gul)
+        for (ex, ey, er, _) in egg:
+            cv2.circle(frame, (ex, ey), int(er), (0, 255, 255), 2)
+            cv2.putText(frame, "Egg", (ex - 20, ey - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+            
 
         if robot_info:
             cv2.circle(frame, (rx, ry), 10, (255, 0, 0), 2)

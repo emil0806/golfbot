@@ -16,10 +16,9 @@ while True:
     if not ret:
         print("Error: Could not capture image")
         continue
-
-    ball_positions = detect_balls(frame)
-    robot_info = detect_robot(frame)
     egg = detect_egg(frame)
+    ball_positions = detect_balls(frame, egg)
+    robot_info = detect_robot(frame)
     if (check == 0):
         cross_lines = detect_cross(frame)
         barriers = detect_barriers(frame)
@@ -76,8 +75,13 @@ while True:
         cv2.putText(frame, "Barrier", (cx - 20, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
     for (x, y, radius, color) in egg:
-        cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
-        cv2.putText(frame, "Egg", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.circle(frame, (x, y), int(radius), (0, 0, 255), 2)
+        cv2.putText(frame, "Egg", (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+    for (x1, y1, x2, y2) in cross_lines:
+        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        cv2.putText(frame, "Barrier", (cx - 15, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
     for (x1, y1, x2, y2) in cross_lines:
         cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
