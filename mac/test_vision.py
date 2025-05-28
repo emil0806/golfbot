@@ -25,11 +25,6 @@ while True:
 
     robot_info = detect_robot(frame)
 
-    if check == 0:
-        cross = detect_cross(frame)
-        barriers = detect_barriers(frame)
-        check = 1
-
     staged_balls = []
     best_staging = None
     best_ball = None
@@ -40,7 +35,7 @@ while True:
         ball_positions = detect_balls(frame, egg, robot_position)
 
     if check == 0:
-        cross_lines = detect_cross(frame, robot_position)
+        cross = detect_cross(frame, robot_position)
         barriers = detect_barriers(frame, robot_position)
         check = 1
 

@@ -37,9 +37,6 @@ while True:
     
     robot_info = detect_robot(frame)
 
-
-
-
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
