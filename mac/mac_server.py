@@ -134,19 +134,7 @@ while True:
                 staged_ball = staging             
                 has_staging = True
             elif(has_staging and dist_to_staged_ball > 50):
-                y = 0
-                x = 0 
-                if(robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
-                    if(robot_position[1] <= 550):
-                        y = 200
-                        x = 950
-                    else:
-                        y = 800
-                        x = 950
-                else:
-                    y = robot_position[1]
-                    x = best_ball[0]
-                staging = (x, y, best_ball[2], best_ball[3])
+                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
                 staged_ball = staging             
