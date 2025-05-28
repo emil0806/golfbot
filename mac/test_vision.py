@@ -39,22 +39,22 @@ while True:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
         ball_positions = detect_balls(frame, egg, robot_position)
+    
+        if check == 0:
+            cross = detect_cross(frame, robot_position, front_marker)
+            barriers = detect_barriers(frame, robot_position)
+            check = 1
+            if barriers:
+                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
+                    barriers)
+                barrier_call = 1
+            else:
+                barriers = []
+                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
+                    1], 0, frame.shape[0]
+
         ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
-                      x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
-
-    if check == 0:
-        cross = detect_cross(frame, robot_position)
-        barriers = detect_barriers(frame, robot_position)
-        check = 1
-        if barriers:
-            FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-                barriers)
-            barrier_call = 1
-        else:
-            barriers = []
-            FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-                1], 0, frame.shape[0]
-
+                        x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
 
         # Filtrér bolde for afstand til robot
         COLLECTION_RADIUS = 20
@@ -126,7 +126,7 @@ while True:
                 staged_ball = staging
                 has_staging = True
             elif (has_staging and dist_to_staged_ball > 50):
-                staging = (x, y, best_ball[2], best_ball[3])
+                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
                 staged_ball = staging

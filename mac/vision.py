@@ -228,7 +228,7 @@ def detect_barriers(frame, robot_position=None):
         return barriers
 
 
-def detect_cross(frame, robot_position=None):
+def detect_cross(frame, robot_position=None, front_marker=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -265,6 +265,12 @@ def detect_cross(frame, robot_position=None):
 
             if robot_position:
                 rx, ry = robot_position
+                dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
+                if dist < 50:  # Hvis for tæt på robot, skip
+                    continue
+            
+            if front_marker:
+                rx, ry = front_marker
                 dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
                 if dist < 50:  # Hvis for tæt på robot, skip
                     continue
