@@ -30,10 +30,21 @@ while True:
 
 
     robot_info = detect_robot(frame)
+        
+    staged_balls = []
+    best_staging = None
+    best_ball = None
+
+    if robot_info:
+        robot_position, front_marker, direction = robot_info
+        rx, ry = robot_position
+        ball_positions = detect_balls(frame, egg, robot_position)
+        ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
+                      x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
 
     if check == 0:
-        cross = detect_cross(frame)
-        barriers = detect_barriers(frame)
+        cross = detect_cross(frame, robot_position)
+        barriers = detect_barriers(frame, robot_position)
         check = 1
         if barriers:
             FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
@@ -44,21 +55,6 @@ while True:
             FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
                 1], 0, frame.shape[0]
 
-    staged_balls = []
-    best_staging = None
-    best_ball = None
-    ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
-                      x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
-
-    if robot_info:
-        robot_position, front_marker, direction = robot_info
-        rx, ry = robot_position
-        ball_positions = detect_balls(frame, egg, robot_position)
-
-    if check == 0:
-        cross = detect_cross(frame, robot_position)
-        barriers = detect_barriers(frame, robot_position)
-        check = 1
 
         # Filtrér bolde for afstand til robot
         COLLECTION_RADIUS = 20
