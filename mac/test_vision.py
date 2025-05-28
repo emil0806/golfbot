@@ -23,10 +23,7 @@ while True:
     ball_positions = detect_balls(frame, egg)
     robot_info = detect_robot(frame)
 
-    if check == 0:
-        cross_lines = detect_cross(frame)
-        barriers = detect_barriers(frame)
-        check = 1
+
 
     staged_balls = []
     best_staging = None
@@ -35,6 +32,11 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
+
+    if check == 0:
+        cross_lines = detect_cross(frame, robot_position)
+        barriers = detect_barriers(frame, robot_position)
+        check = 1
 
         # Filtrér bolde for afstand til robot
         COLLECTION_RADIUS = 20

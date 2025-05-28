@@ -166,11 +166,11 @@ def detect_robot(frame):
     return robot_orientation
 
 
-def detect_barriers(frame):
+def detect_barriers(frame, robot_position=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
-    lower_red1 = np.array([0, 120, 150])
+    lower_red1 = np.array([5, 150, 150])
     upper_red1 = np.array([10, 255, 255])
     lower_red2 = np.array([170, 120, 150])
     upper_red2 = np.array([180, 255, 255])
@@ -199,10 +199,19 @@ def detect_barriers(frame):
     cv2.imshow("Barrier Mask", mask)
     cv2.imshow("Edges", edges)
 
-    return barriers
+    if robot_position:
+        rx, ry = robot_position
+        filtered_barriers = []
+        for ((x1, y1, x2, y2), (cx, cy)) in barriers:
+            dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
+            if dist > 40:  # justér radius hvis nødvendigt
+                filtered_barriers.append(((x1, y1, x2, y2), (cx, cy)))
+        return filtered_barriers
+    else:
+        return barriers
 
 
-def detect_cross(frame):
+def detect_cross(frame, robot_position=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -230,9 +239,19 @@ def detect_cross(frame):
     
     cross_lines = []
 
+
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
+
+            if robot_position:
+                rx, ry = robot_position
+                dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
+                if dist < 40:  # Hvis for tæt på robot, skip
+                    continue
+
             cross_lines.append((x1, y1, x2, y2))
 
     # Debug mask

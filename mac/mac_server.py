@@ -35,16 +35,19 @@ while True:
     
     robot_info = detect_robot(frame)
 
-    if (barrier_call == 0):
-        barriers = detect_barriers(frame)
-        cross = detect_cross(frame)
-        egg = detect_egg(frame)
-        barrier_call = 1
+
 
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
+        if barrier_call == 0:
+            barriers = detect_barriers(frame, robot_position)
+            cross = detect_cross(frame, robot_position)
+            egg = detect_egg(frame)
+            barrier_call = 1
+       
+       
         rx, ry = robot_position  
         fx, fy = front_marker 
 
