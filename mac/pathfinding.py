@@ -229,6 +229,30 @@ def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
     # radius 15 er fint til visualisering; farve-id bevares fra bolden
     return (int(sx), int(sy), 15, ball[3])
 
+def barrier_blocks_path(robot, ball, eggs, crosses, threshold=60):
+    fx, fy = robot
+    bx, by = ball[:2]
+    if(fx < 800 and fy < 600):
+        fx -= 150
+
+    # Tjek æg
+    for (ex, ey, er, _) in eggs:
+        dist = _point_to_segment_distance(ex, ey, fx, fy, bx, by)
+        if dist < threshold + er:
+            return True
+
+    # Tjek kryds
+    for (x1, y1, x2, y2) in crosses:
+        # Find midtpunkt af krydslinje
+        cx = (x1 + x2) // 2
+        cy = (y1 + y2) // 2
+        dist = _point_to_segment_distance(cx, cy, fx, fy, bx, by)
+        if dist < threshold:
+            return True
+
+    return False
+
+
 def delivery_routine(robot_info):
     # Simple placeholder routine
     # Go forward to an approach point, turn, then reverse

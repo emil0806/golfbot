@@ -1,9 +1,9 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine
+from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, barrier_blocks_path
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross
 from config import EV3_IP, PORT
 import time
 
@@ -25,6 +25,7 @@ cap = cv2.VideoCapture(0)
 
 last_command = None
 timer = 0
+barrier_call = 0
 
 while True:
     ret, frame = cap.read()
@@ -33,6 +34,13 @@ while True:
         continue
     
     robot_info = detect_robot(frame)
+
+    if (barrier_call == 0):
+        barriers = detect_barriers(frame)
+        cross = detect_cross(frame)
+        egg = detect_egg(frame)
+        barrier_call = 1
+
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
@@ -45,7 +53,6 @@ while True:
         if current_time - timer >= 1:
             egg = detect_egg(frame)
             ball_positions = detect_balls(frame, egg)
-            barriers = detect_barriers(frame)
             timer = current_time
 
         COLLECTION_RADIUS = 20
@@ -54,7 +61,6 @@ while True:
             if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
         ]
 
-        
         # Main loop
         if len(ball_positions) > 11:
             command = delivery_routine(robot_info)
@@ -69,77 +75,48 @@ while True:
                 last_command = command
             continue
 
-
         pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
-        sorted_balls = pre_sorted_balls
+        best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
         staged_balls = []
 
-        for i, (x, y, r, o) in enumerate(pre_sorted_balls):
-            ball = (x, y, r, o)
-            
+        if best_ball:
             # Lav staging-punkt hvis bolden er i hjørne eller ved kant
-            if is_corner_ball(ball):
-                staging = create_staging_point_corner(ball)
-            elif is_edge_ball(ball):
-                staging = create_staging_point_edge(ball)
+            if is_corner_ball(best_ball):
+                staging = create_staging_point_corner(best_ball)
+            elif is_edge_ball(best_ball):
+                staging = create_staging_point_edge(best_ball)
             else:
-                continue  # ingen staging for midterbolde
+                staging = None
 
-                        # ---------- ÆG-UNDVIGELSE ----------
-            blocked_by_egg = False
-            for (ex, ey, er, _) in egg:
-                if egg_blocks_path(robot_position, ball, (ex, ey, er), threshold=20):
-                    # Lav staging-punkt vinkelret på stien
-                    staging = create_staging_point_egg(robot_position, ball, (ex, ey, er))
+            # Æg-undvigelse
+            if staging:
+                # Check afstand og vinkel til staging
+                staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
+                ball_dist = np.linalg.norm(np.array(best_ball[:2]) - np.array(front_marker))
+
+                # Vinkel mellem robot og bold
+                robot_vector = np.array(front_marker) - np.array(robot_position)
+                ball_vector = np.array(best_ball[:2]) - np.array(robot_position)
+
+                dot = np.dot(robot_vector, ball_vector)
+                mag_r = np.linalg.norm(robot_vector)
+                mag_b = np.linalg.norm(ball_vector)
+                cos_theta = max(-1, min(1, dot / (mag_r * mag_b + 1e-6)))
+                angle_diff = np.degrees(np.arccos(cos_theta))
+
+                if (staging_dist > 80 and angle_diff > 10) or ball_dist > 120:
+                    # Erstat best_ball med staging
                     staged_balls.append(staging)
-                    sorted_balls.append(staging)
-                    blocked_by_egg = True
-                    break  # ét staging-punkt er nok
-            if blocked_by_egg:
-                continue  # spring direkte til næste bold
-
-            # --- Check om robotten er tæt på staging-punktet ---
-            staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
-            ball_dist = np.linalg.norm(np.array(ball[:2]) - np.array(front_marker))
-
-            # --- Check vinkel til bold ---
-            robot_vector = np.array(front_marker) - np.array(robot_position)
-            ball_vector = np.array((x, y)) - np.array(robot_position)
-
-            dot = np.dot(robot_vector, ball_vector)
-            mag_r = np.linalg.norm(robot_vector)
-            mag_b = np.linalg.norm(ball_vector)
-            cos_theta = max(-1, min(1, dot / (mag_r * mag_b + 1e-6)))
-            angle_diff = np.degrees(np.arccos(cos_theta))
-
-            # --- Vinkel mellem robot → staging og robot → bold ---
-            staging_vector = np.array(staging[:2]) - np.array(robot_position)
-
-            dot_product = np.dot(staging_vector, ball_vector)
-            norm_staging = np.linalg.norm(staging_vector)
-            norm_ball = np.linalg.norm(ball_vector)
-
-            if norm_staging > 0 and norm_ball > 0:
-                cos_theta = dot_product / (norm_staging * norm_ball)
-                cos_theta = np.clip(cos_theta, -1.0, 1.0)  # avoid numerical errors
-                angle_between_vectors = np.degrees(np.arccos(cos_theta))
-                print(f"Angle between robot→staging and robot→ball: {angle_between_vectors:.2f}°")
-
-            if staging_dist < 80 and angle_diff < 10:
-                continue
-
-            # Kun tilføj staging hvis robotten IKKE er tæt nok eller IKKE har god vinkel
-            if ((staging_dist > 80 and angle_diff > 10) or ball_dist > 120):
-                staged_balls.append(staging)
-                sorted_balls.append(staging)     
+                    best_ball = staging  # overskriv best_ball med staging-punktet
             
-
-        # Brug staged_balls (de indeholder staging points ELLER almindelige bolde)
-        sorted_balls = sort_balls_by_distance(sorted_balls, front_marker)
-
-        best_ball = sorted_balls[0] if sorted_balls else None
+            if barrier_blocks_path(robot_position, best_ball, egg, cross):
+                # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
+                best_ball = staging  # brug stagingpunkt som mål
+                staged_balls.append(best_ball)
 
         movement_command = determine_direction(robot_info, best_ball)
+
         if movement_command != last_command:
             print(f"Sending command:  {movement_command}")
 
@@ -165,6 +142,16 @@ while True:
             cv2.putText(frame, "Egg", (ex - 20, ey - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
             
+        for (x1, y1, x2, y2) in cross:
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Barrier", (cx - 15, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+
+        for (x1, y1, x2, y2), center in barriers:
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            cx, cy = center
+            cv2.putText(frame, "Barrier", (cx - 20, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    
 
         if robot_info:
             cv2.circle(frame, (rx, ry), 10, (255, 0, 0), 2)
