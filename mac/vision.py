@@ -3,7 +3,7 @@ import numpy as np
 
 egg_location = []
 
-def detect_balls(frame, egg):
+def detect_balls(frame, egg, robot_position=None):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -62,15 +62,20 @@ def detect_balls(frame, egg):
             aspect_ratio = float(w_rect) / h_rect
 
             if (
-                10 < radius < 23 and
+                10 < radius < 20 and
                 0.8 < circularity < 1.2 and
-                0.8 < aspect_ratio < 1.2 and
+                0.9 < aspect_ratio < 1.1 and
                 area > 150
             ):
                 
                 # Tjek at bold ikke er inde i et æg
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
-                if not is_inside_egg:
+                is_inside_robot = False
+                if robot_position:
+                    rx, ry = robot_position
+                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+
+                if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
     # Konturfiltrering
     filter_contours(contours_orange, 1)
@@ -80,7 +85,7 @@ def detect_balls(frame, egg):
     gray = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 2)
     circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20,
-                               param1=50, param2=30, minRadius=10, maxRadius=25)
+                               param1=50, param2=30, minRadius=10, maxRadius=20)
 
     if circles is not None:
         for (x, y, r) in np.round(circles[0, :]).astype("int"):
@@ -106,7 +111,12 @@ def detect_balls(frame, egg):
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
             is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
-            if not is_inside_egg:
+            is_inside_robot = False
+            if robot_position:
+                rx, ry = robot_position
+                is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+
+            if not is_inside_egg and not is_inside_robot:
                 if is_white:
                     ball_positions.append((x, y, r, 0))
                 elif is_orange:
@@ -166,11 +176,11 @@ def detect_robot(frame):
     return robot_orientation
 
 
-def detect_barriers(frame):
+def detect_barriers(frame, robot_position=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
-    lower_red1 = np.array([0, 120, 150])
+    lower_red1 = np.array([5, 150, 150])
     upper_red1 = np.array([10, 255, 255])
     lower_red2 = np.array([170, 120, 150])
     upper_red2 = np.array([180, 255, 255])
@@ -199,10 +209,19 @@ def detect_barriers(frame):
     cv2.imshow("Barrier Mask", mask)
     cv2.imshow("Edges", edges)
 
-    return barriers
+    if robot_position:
+        rx, ry = robot_position
+        filtered_barriers = []
+        for ((x1, y1, x2, y2), (cx, cy)) in barriers:
+            dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
+            if dist > 40:  # justér radius hvis nødvendigt
+                filtered_barriers.append(((x1, y1, x2, y2), (cx, cy)))
+        return filtered_barriers
+    else:
+        return barriers
 
 
-def detect_cross(frame):
+def detect_cross(frame, robot_position=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -230,9 +249,19 @@ def detect_cross(frame):
     
     cross_lines = []
 
+
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
+
+            if robot_position:
+                rx, ry = robot_position
+                dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
+                if dist < 40:  # Hvis for tæt på robot, skip
+                    continue
+
             cross_lines.append((x1, y1, x2, y2))
 
     # Debug mask
