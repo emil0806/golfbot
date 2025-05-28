@@ -3,6 +3,7 @@ import numpy as np
 
 egg_location = []
 
+
 def detect_balls(frame, egg):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -42,8 +43,10 @@ def detect_balls(frame, egg):
     cv2.imshow("Orange Color Mask", mask_orange)
 
     # Find konturer
-    contours_white, _ = cv2.findContours(mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_white, _ = cv2.findContours(
+        mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_orange, _ = cv2.findContours(
+        mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     ball_positions = []
 
@@ -67,9 +70,10 @@ def detect_balls(frame, egg):
                 0.8 < aspect_ratio < 1.2 and
                 area > 150
             ):
-                
+
                 # Tjek at bold ikke er inde i et æg
-                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+                is_inside_egg = any(np.linalg.norm(
+                    np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 if not is_inside_egg:
                     ball_positions.append((x, y, radius, color_id))
     # Konturfiltrering
@@ -90,7 +94,8 @@ def detect_balls(frame, egg):
 
             roi_size = 7
             x1, y1 = max(x - roi_size, 0), max(y - roi_size, 0)
-            x2, y2 = min(x + roi_size, hsv.shape[1] - 1), min(y + roi_size, hsv.shape[0] - 1)
+            x2, y2 = min(
+                x + roi_size, hsv.shape[1] - 1), min(y + roi_size, hsv.shape[0] - 1)
             roi = hsv[y1:y2, x1:x2]
 
             if roi.size == 0:
@@ -105,7 +110,8 @@ def detect_balls(frame, egg):
             # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
-            is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+            is_inside_egg = any(np.linalg.norm(
+                np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             if not is_inside_egg:
                 if is_white:
                     ball_positions.append((x, y, r, 0))
@@ -113,6 +119,7 @@ def detect_balls(frame, egg):
                     ball_positions.append((x, y, r, 1))
 
     return ball_positions
+
 
 def detect_robot(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -137,8 +144,10 @@ def detect_robot(frame):
     cv2.imshow("Green Mask", mask_green)
     cv2.imshow("Orange Mask (Robot Front)", mask_orange)
 
-    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_green, _ = cv2.findContours(
+        mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_orange, _ = cv2.findContours(
+        mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     robot_position = None
     front_position = None
@@ -184,7 +193,8 @@ def detect_barriers(frame):
     edges = cv2.Canny(blurred, 50, 150)
 
     # Find linjer med Hough Line Transform
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=50, maxLineGap=10)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180,
+                            threshold=100, minLineLength=50, maxLineGap=10)
 
     barriers = []
 
@@ -220,14 +230,14 @@ def detect_cross(frame):
     edges = cv2.Canny(blurred, 50, 150)
 
     lines = cv2.HoughLinesP(
-            edges,
-            rho=1,
-            theta=np.pi / 180,
-            threshold=20,
-            minLineLength=5,
-            maxLineGap=10
-        )
-    
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=20,
+        minLineLength=5,
+        maxLineGap=10
+    )
+
     cross_lines = []
 
     if lines is not None:
@@ -241,6 +251,7 @@ def detect_cross(frame):
 
     return cross_lines  # Liste af linjer
 
+
 def detect_egg(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -249,7 +260,8 @@ def detect_egg(frame):
 
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
 
-    contours_white, _ = cv2.findContours(mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_white, _ = cv2.findContours(
+        mask_white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     egg = []
 
@@ -259,10 +271,19 @@ def detect_egg(frame):
         perimeter = cv2.arcLength(cnt, True)
         area = cv2.contourArea(cnt)
         circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
-        
 
         if 0.8 < circularity and radius > 20:
             egg.append((int(x), int(y), int(radius), 0))
 
-    egg_location = egg
     return egg
+
+
+def inside_field(barriers):
+    xs, ys = [], []
+    for (x1, y1, x2, y2), _ in barriers:
+        xs.extend([x1, x2])
+        ys.extend([y1, y2])
+    FIELD_X_MIN, FIELD_X_MAX = min(xs), max(xs)
+    FIELD_Y_MIN, FIELD_Y_MAX = min(ys), max(ys)
+
+    return (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
