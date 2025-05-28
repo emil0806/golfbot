@@ -76,16 +76,8 @@ while True:
 
         for i, (x, y, r, o) in enumerate(pre_sorted_balls):
             ball = (x, y, r, o)
-            
-            # Lav staging-punkt hvis bolden er i hjørne eller ved kant
-            if is_corner_ball(ball):
-                staging = create_staging_point_corner(ball)
-            elif is_edge_ball(ball):
-                staging = create_staging_point_edge(ball)
-            else:
-                continue  # ingen staging for midterbolde
 
-                        # ---------- ÆG-UNDVIGELSE ----------
+            '''# ---------- ÆG-UNDVIGELSE ----------
             blocked_by_egg = False
             for (ex, ey, er, _) in egg:
                 if egg_blocks_path(robot_position, ball, (ex, ey, er), threshold=20):
@@ -96,7 +88,17 @@ while True:
                     blocked_by_egg = True
                     break  # ét staging-punkt er nok
             if blocked_by_egg:
-                continue  # spring direkte til næste bold
+                continue  # spring direkte til næste bold            
+            # Lav staging-punkt hvis bolden er i hjørne eller ved kant '''
+            
+            if is_corner_ball(ball):
+                staging = create_staging_point_corner(ball)
+            elif is_edge_ball(ball):
+                staging = create_staging_point_edge(ball)
+            else:
+                continue  # ingen staging for midterbolde
+
+
 
             # --- Check om robotten er tæt på staging-punktet ---
             staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
