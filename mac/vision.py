@@ -3,7 +3,7 @@ import numpy as np
 
 egg_location = []
 
-def detect_balls(frame, egg):
+def detect_balls(frame, egg, robot_position=None):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -70,7 +70,12 @@ def detect_balls(frame, egg):
                 
                 # Tjek at bold ikke er inde i et æg
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
-                if not is_inside_egg:
+                is_inside_robot = False
+                if robot_position:
+                    rx, ry = robot_position
+                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+
+                if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
     # Konturfiltrering
     filter_contours(contours_orange, 1)
@@ -106,7 +111,12 @@ def detect_balls(frame, egg):
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
             is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
-            if not is_inside_egg:
+            is_inside_robot = False
+            if robot_position:
+                rx, ry = robot_position
+                is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+
+            if not is_inside_egg and not is_inside_robot:
                 if is_white:
                     ball_positions.append((x, y, r, 0))
                 elif is_orange:

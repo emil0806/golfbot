@@ -55,7 +55,7 @@ while True:
 
         if current_time - timer >= 1:
             egg = detect_egg(frame)
-            ball_positions = detect_balls(frame, egg)
+            ball_positions = detect_balls(frame, egg, robot_position)
             timer = current_time
 
         COLLECTION_RADIUS = 20

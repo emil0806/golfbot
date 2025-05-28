@@ -20,7 +20,7 @@ while True:
         continue
 
     egg = detect_egg(frame)
-    ball_positions = detect_balls(frame, egg)
+
     robot_info = detect_robot(frame)
 
 
@@ -32,6 +32,7 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
+        ball_positions = detect_balls(frame, egg, robot_position)
 
     if check == 0:
         cross_lines = detect_cross(frame, robot_position)
