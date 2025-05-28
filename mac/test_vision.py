@@ -12,6 +12,8 @@ from pathfinding import (
 cap = cv2.VideoCapture(0)
 last_print_time = time.time()
 check = 0
+has_staging = False
+staged_ball = None
 
 while True:
     ret, frame = cap.read()
@@ -24,7 +26,7 @@ while True:
     robot_info = detect_robot(frame)
 
     if check == 0:
-        cross_lines = detect_cross(frame)
+        cross = detect_cross(frame)
         barriers = detect_barriers(frame)
         check = 1
 
@@ -49,9 +51,9 @@ while True:
         # Vis staging til alle kant/hjørnebolde (debug formål)
         for ball in ball_positions:
             if is_corner_ball(ball):
-                staged_balls.append((create_staging_point_corner(ball), "purple"))
+                staged_balls.append((create_staging_point_corner(ball)))
             elif is_edge_ball(ball):
-                staged_balls.append((create_staging_point_edge(ball), "purple"))
+                staged_balls.append((create_staging_point_edge(ball)))
 
         if best_ball:
             # Hvis best_ball er edge eller corner
@@ -79,10 +81,37 @@ while True:
                     best_staging = staging
                     best_ball = staging
 
-            if barrier_blocks_path(robot_position, best_ball, egg, cross_lines):
-                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
-                best_staging = staging
-                best_ball = staging
+            dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(np.array(staged_ball[:2]) - np.array(robot_position))
+            
+            y = 0
+            x = 0 
+            if(robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
+                if(robot_position[1] <= 550):
+                    y = 200
+                    x = 950
+                else:
+                    y = 800
+                    x = 950
+            else:
+                y = robot_position[1]
+                x = best_ball[0]
+
+            if barrier_blocks_path(robot_position, best_ball, egg, cross):
+                # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                staging = (x, y, best_ball[2], best_ball[3])
+                best_ball = staging  # brug stagingpunkt som mål
+                staged_balls.append(best_ball)
+                staged_ball = staging             
+                has_staging = True
+            elif(has_staging and dist_to_staged_ball > 50):
+                staging = (x, y, best_ball[2], best_ball[3])
+                best_ball = staging  # brug stagingpunkt som mål
+                staged_balls.append(best_ball)
+                staged_ball = staging             
+                has_staging = True
+            else:
+                has_staging = False
+                staged_ball = None
 
     # --- Debug print hver 5. sek ---
     if time.time() - last_print_time >= 5:
@@ -98,13 +127,10 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     # --- Tegn staging-points (lilla) ---
-    for (staging, color) in staged_balls:
-        x, y, r, _ = staging
-        draw_color = (255, 0, 255) if color == "purple" else (255, 0, 0)
-        cv2.circle(frame, (x, y), int(r), draw_color, 2)
-        label = "Staging" if color == "purple" else "Best Staging"
-        cv2.putText(frame, label, (x - 30, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, draw_color, 2)
+    for (x, y, r, o) in staged_balls:
+            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
+            cv2.putText(frame, "Staging", (x - 25, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
     if best_staging:
         x, y, r, _ = best_staging
@@ -130,7 +156,7 @@ while True:
         cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-    for (x1, y1, x2, y2) in cross_lines:
+    for (x1, y1, x2, y2) in cross:
         cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
         cv2.putText(frame, "Cross", (cx - 15, cy - 10),

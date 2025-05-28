@@ -82,7 +82,7 @@ def determine_direction(robot_position, ball_position):
 
     print(f"Angle: {angle_difference:.2f}°, Cross: {cross:.2f}")
 
-    if angle_difference < 5:
+    if angle_difference < 3:
         return "forward"
     elif cross < 0:
         return "right"
@@ -232,9 +232,7 @@ def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
 def barrier_blocks_path(robot, ball, eggs, crosses, threshold=60):
     fx, fy = robot
     bx, by = ball[:2]
-    if(fx < 800 and fy < 600):
-        fx -= 150
-
+    
     # Tjek æg
     for (ex, ey, er, _) in eggs:
         dist = _point_to_segment_distance(ex, ey, fx, fy, bx, by)

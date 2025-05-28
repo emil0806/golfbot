@@ -26,6 +26,8 @@ cap = cv2.VideoCapture(0)
 last_command = None
 timer = 0
 barrier_call = 0
+has_staging = False
+staged_ball = None
 
 while True:
     ret, frame = cap.read()
@@ -109,11 +111,49 @@ while True:
                     staged_balls.append(staging)
                     best_ball = staging  # overskriv best_ball med staging-punktet
             
+            dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(np.array(staged_ball[:2]) - np.array(robot_position))
+            
+
             if barrier_blocks_path(robot_position, best_ball, egg, cross):
+                y = 0
+                x = 0 
+                if(robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
+                    if(robot_position[1] <= 550):
+                        y = 200
+                        x = 950
+                    else:
+                        y = 800
+                        x = 950
+                else:
+                    y = robot_position[1]
+                    x = best_ball[0]
                 # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
-                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
+                staging = (x, y, best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
+                staged_ball = staging             
+                has_staging = True
+            elif(has_staging and dist_to_staged_ball > 50):
+                y = 0
+                x = 0 
+                if(robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
+                    if(robot_position[1] <= 550):
+                        y = 200
+                        x = 950
+                    else:
+                        y = 800
+                        x = 950
+                else:
+                    y = robot_position[1]
+                    x = best_ball[0]
+                staging = (x, y, best_ball[2], best_ball[3])
+                best_ball = staging  # brug stagingpunkt som mål
+                staged_balls.append(best_ball)
+                staged_ball = staging             
+                has_staging = True
+            else:
+                has_staging = False
+                staged_ball = None
 
         movement_command = determine_direction(robot_info, best_ball)
 

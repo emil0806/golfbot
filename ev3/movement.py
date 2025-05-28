@@ -4,11 +4,11 @@ tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
 delivery = MediumMotor(OUTPUT_C)
 
-collector.on(SpeedPercent(-35))
+collector.on(SpeedPercent(-30))
 
 
 def move_robot(direction):
-    collector.on(SpeedPercent(-35))
+    collector.on(SpeedPercent(-30))
 
     if direction == "forward":
         print("Moving forward")
@@ -16,11 +16,11 @@ def move_robot(direction):
 
     elif direction == "left":
         print("Turning left")
-        tank_drive.on(SpeedPercent(-15), SpeedPercent(15)) 
+        tank_drive.on(SpeedPercent(-7), SpeedPercent(7)) 
 
     elif direction == "right":
         print("Turning right")
-        tank_drive.on(SpeedPercent(15), SpeedPercent(-15))
+        tank_drive.on(SpeedPercent(7), SpeedPercent(-7))
 
     elif direction == "backward":
         print("Reversing")
