@@ -1,7 +1,7 @@
 import cv2
 import time
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
@@ -15,6 +15,11 @@ check = 0
 has_staging = False
 staged_ball = None
 
+FIELD_X_MIN = None
+FIELD_X_MAX = None
+FIELD_Y_MIN = None
+FIELD_Y_MAX = None
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -23,11 +28,27 @@ while True:
 
     egg = detect_egg(frame)
 
+
     robot_info = detect_robot(frame)
+
+    if check == 0:
+        cross = detect_cross(frame)
+        barriers = detect_barriers(frame)
+        check = 1
+        if barriers:
+            FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
+                barriers)
+            barrier_call = 1
+        else:
+            barriers = []
+            FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
+                1], 0, frame.shape[0]
 
     staged_balls = []
     best_staging = None
     best_ball = None
+    ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
+                      x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
@@ -66,11 +87,15 @@ while True:
                 staging = None
 
             if staging:
-                staging_dist = np.linalg.norm(np.array(staging[:2]) - np.array(front_marker))
-                ball_dist = np.linalg.norm(np.array(best_ball[:2]) - np.array(front_marker))
+                staging_dist = np.linalg.norm(
+                    np.array(staging[:2]) - np.array(front_marker))
+                ball_dist = np.linalg.norm(
+                    np.array(best_ball[:2]) - np.array(front_marker))
 
-                robot_vector = np.array(front_marker) - np.array(robot_position)
-                ball_vector = np.array(best_ball[:2]) - np.array(robot_position)
+                robot_vector = np.array(front_marker) - \
+                    np.array(robot_position)
+                ball_vector = np.array(
+                    best_ball[:2]) - np.array(robot_position)
 
                 dot = np.dot(robot_vector, ball_vector)
                 mag_r = np.linalg.norm(robot_vector)
@@ -82,12 +107,13 @@ while True:
                     best_staging = staging
                     best_ball = staging
 
-            dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(np.array(staged_ball[:2]) - np.array(robot_position))
-            
+            dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
+                np.array(staged_ball[:2]) - np.array(robot_position))
+
             y = 0
-            x = 0 
-            if(robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
-                if(robot_position[1] <= 550):
+            x = 0
+            if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
+                if (robot_position[1] <= 550):
                     y = 200
                     x = 950
                 else:
@@ -102,13 +128,13 @@ while True:
                 staging = (x, y, best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
-                staged_ball = staging             
+                staged_ball = staging
                 has_staging = True
-            elif(has_staging and dist_to_staged_ball > 50):
+            elif (has_staging and dist_to_staged_ball > 50):
                 staging = (x, y, best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
-                staged_ball = staging             
+                staged_ball = staging
                 has_staging = True
             else:
                 has_staging = False
@@ -129,9 +155,9 @@ while True:
 
     # --- Tegn staging-points (lilla) ---
     for (x, y, r, o) in staged_balls:
-            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-            cv2.putText(frame, "Staging", (x - 25, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
+        cv2.putText(frame, "Staging", (x - 25, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
     if best_staging:
         x, y, r, _ = best_staging
