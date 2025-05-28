@@ -62,9 +62,9 @@ def detect_balls(frame, egg):
             aspect_ratio = float(w_rect) / h_rect
 
             if (
-                10 < radius < 23 and
+                10 < radius < 20 and
                 0.8 < circularity < 1.2 and
-                0.8 < aspect_ratio < 1.2 and
+                0.9 < aspect_ratio < 1.1 and
                 area > 150
             ):
                 
@@ -80,7 +80,7 @@ def detect_balls(frame, egg):
     gray = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 2)
     circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20,
-                               param1=50, param2=30, minRadius=10, maxRadius=25)
+                               param1=50, param2=30, minRadius=10, maxRadius=20)
 
     if circles is not None:
         for (x, y, r) in np.round(circles[0, :]).astype("int"):
