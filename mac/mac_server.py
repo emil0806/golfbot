@@ -53,7 +53,7 @@ while barrier_call < 5:
         robot_position, front_marker, direction = robot_info
 
         barriers.append(detect_barriers(frame, robot_position, ball_positions))
-        cross.append(detect_cross(frame, robot_position, front_marker))
+        cross.append(detect_cross(frame, robot_position, front_marker, ball_positions))
         barrier_call += 1
 
 if barriers:
@@ -101,12 +101,12 @@ while True:
         staged_balls = []
 
         ###   Delivery   ###
-        if (len(ball_positions) in [0, 4, 8] or delivery_stage > 0) and not last_delivery_count == len(ball_positions):
+        if (len(ball_positions) == 0):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
 
-                staging_target = (FIELD_X_MAX - 100, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+                staging_target = (FIELD_X_MAX - 200, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
                 back_alignment_target = (FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
 
             if delivery_stage == 1:
@@ -116,10 +116,10 @@ while True:
                 print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
                 if dist_to_staging > 50:
                     dummy_target = (*staging_target, 10, (255, 255, 255))
-                    command = determine_direction(robot_info, dummy_target)
-                    if command != last_command:
-                        conn.sendall(command.encode())
-                        last_command = command
+                    movement_command = determine_direction(robot_info, dummy_target)
+                    if movement_command != last_command:
+                        conn.sendall(movement_command.encode())
+                        last_command = movement_command
                 else:
                     delivery_stage = 2
 
@@ -135,20 +135,19 @@ while True:
 
                 print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
 
-                if angle_diff > 3:
+                if angle_diff > 1.5:
                     # Brug 3D vektorer til at finde drejeretning (z-komponenten af krydsprodukt)
                     robot_3d = np.append(robot_vector, 0)
                     desired_3d = np.append(desired_vector, 0)
                     cross_product = np.cross(robot_3d, desired_3d)[2]  # kun Z-aksen er relevant
-
-                    if cross_product > 0:
-                        command = "left"
+                    print(f"cross product: {cross_product: .2f}")
+                    if angle_diff > 15:
+                        movement_command = "left"
                     else:
-                        command = "right"
-
-                    if command != last_command:
-                        conn.sendall(command.encode())
-                        last_command = command
+                        movement_command = "slow_left"
+                    if movement_command != last_command:
+                        conn.sendall(movement_command.encode())
+                        last_command = movement_command
                 else:
                     delivery_stage = 3
 
@@ -156,10 +155,10 @@ while True:
                 dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
                 if dist_back > 50:
-                    command = "backward"
-                    if command != last_command:
-                        conn.sendall(command.encode())
-                        last_command = command
+                    movement_command = "slow_backward"
+                    if movement_command != last_command:
+                        conn.sendall(movement_command.encode())
+                        last_command = movement_command
                 else:
                     delivery_stage = 4
 
@@ -250,7 +249,7 @@ while True:
                     has_staging = False
                     staged_ball = None
 
-            if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+            if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
                 time.sleep(3)
