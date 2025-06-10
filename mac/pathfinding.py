@@ -63,12 +63,18 @@ def determine_direction(robot_position, ball_position):
     # Determine if angle is to the left or right using cross product
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
 
-    if angle_difference < 3:
+    if angle_difference < 1.5:
         return "forward"
     elif cross < 0:
-        return "right"
+        if angle_difference > 15:
+            return "right"
+        else:
+            return "slow_right"
     else:
-        return "left"
+        if angle_difference > 15:
+            return "left"
+        else:
+            return "slow_left"
 
 
 def point_rect_distance(px, py, rect):

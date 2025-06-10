@@ -29,7 +29,7 @@ barrier_call = 0
 has_staging = False
 staged_ball = None
 delivery_stage = 0  
-last_delivery_count = 0
+last_delivery_count = 11
 
 barriers = []
 cross = []
@@ -101,7 +101,7 @@ while True:
         staged_balls = []
 
         ###   Delivery   ###
-        if (len(ball_positions) == 0):
+        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
@@ -219,7 +219,7 @@ while True:
                 dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
                     np.array(staged_ball[:2]) - np.array(robot_position))
 
-                if barrier_blocks_path(robot_position, best_ball, egg, cross):
+                if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     y = 0
                     x = 0
                     if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
