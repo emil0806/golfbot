@@ -81,13 +81,14 @@ while True:
         
         staged_balls = []
 
+        ###   Delivery   ###
         if (len(ball_positions) in [0, 4, 8] or delivery_stage > 0) and not last_delivery_count == len(ball_positions):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
 
-            staging_target = (1400, 530)
-            back_alignment_target = (1600, 530)
+                staging_target = (FIELD_X_MAX - 100, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+                back_alignment_target = (FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
 
             if delivery_stage == 1:
                 cm_x = (front_marker[0] + robot_position[0]) / 2
