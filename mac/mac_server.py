@@ -1,7 +1,7 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, barrier_blocks_path
+from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, barrier_blocks_path, close_to_barrier
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from config import EV3_IP, PORT
@@ -240,6 +240,15 @@ while True:
                 else:
                     has_staging = False
                     staged_ball = None
+
+            if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+                movement_command = "stop"
+                conn.sendall(movement_command.encode())
+                time.sleep(3)
+                movement_command = "backward"
+                conn.sendall(movement_command.encode())
+                time.sleep(2)
+                last_command = "backward"
 
             movement_command = determine_direction(robot_info, best_ball)
 

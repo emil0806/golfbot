@@ -241,3 +241,15 @@ def delivery_routine(robot_info):
 
 def stop_delivery_routine():
     return "continue"
+
+def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+
+    if FIELD_X_MIN + 40 + 60 > front_marker[0]:
+        return True
+    if FIELD_X_MAX - 40 - 60 < front_marker[0]:
+        return True
+    if FIELD_Y_MIN + 40 + 60 > front_marker[1]:
+        return True
+    if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
+        return True
+    return False
