@@ -140,7 +140,6 @@ while True:
                     robot_3d = np.append(robot_vector, 0)
                     desired_3d = np.append(desired_vector, 0)
                     cross_product = np.cross(robot_3d, desired_3d)[2]  # kun Z-aksen er relevant
-                    print(f"cross product: {cross_product: .2f}")
                     if angle_diff > 15:
                         movement_command = "left"
                     else:
@@ -154,7 +153,7 @@ while True:
             if delivery_stage == 3:
                 dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-                if dist_back > 50:
+                if dist_back > 35:
                     movement_command = "slow_backward"
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
