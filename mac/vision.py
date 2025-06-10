@@ -129,19 +129,24 @@ def detect_balls(frame, egg, robot_position=None):
 
 
 def detect_robot(frame):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l_clahe = clahe.apply(l)
+    lab_clahe = cv2.merge((l_clahe, a, b))
+    frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
+    hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
 
     # Grøn til bagende
     lower_green = np.array([60, 100, 100])
     upper_green = np.array([85, 255, 255])
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
 
-    # Orange til fronten (rektangel)
+    # Orange til fronten
     lower_orange = np.array([12, 85, 230])
     upper_orange = np.array([32, 255, 255])
     mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
 
-    # Morfologisk rensning
     kernel = np.ones((7, 7), np.uint8)
     mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
     mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
@@ -151,35 +156,32 @@ def detect_robot(frame):
     cv2.imshow("Green Mask", mask_green)
     cv2.imshow("Orange Mask (Robot Front)", mask_orange)
 
-    contours_green, _ = cv2.findContours(
-        mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_orange, _ = cv2.findContours(
-        mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    robot_position = None
-    front_position = None
+    def find_best_rectangle(contours, min_area=20):
+        best = None
+        best_area = 0
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            area = cv2.contourArea(cnt)
+            aspect_ratio = float(w) / h
+            if 0.6 < aspect_ratio < 1.6 and area > min_area:  # næsten kvadrat
+                if area > best_area:
+                    best = (x + w // 2, y + h // 2)
+                    best_area = area
+        return best
 
-    # Find bagende (grøn)
-    if contours_green:
-        largest_green = max(contours_green, key=cv2.contourArea)
-        (x, y), radius = cv2.minEnclosingCircle(largest_green)
-        if radius > 2:
-            robot_position = (int(x), int(y))
+    robot_position = find_best_rectangle(contours_green)
+    front_position = find_best_rectangle(contours_orange)
 
-    # Find forende (orange rektangel)
-    if contours_orange:
-        largest_orange = max(contours_orange, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_orange)
-        front_position = (int(x + w / 2), int(y + h / 2))
-
-    robot_orientation = None
     if robot_position and front_position:
         rx, ry = robot_position
         fx, fy = front_position
         direction_vector = (fx - rx, fy - ry)
-        robot_orientation = (robot_position, front_position, direction_vector)
+        return (robot_position, front_position, direction_vector)
 
-    return robot_orientation
+    return None
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
