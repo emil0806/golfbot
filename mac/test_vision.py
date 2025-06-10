@@ -162,16 +162,18 @@ while True:
         last_print_time = time.time()
 
     # --- Tegn originale bolde (grøn) ---
-    for (x, y, radius, color) in ball_positions:
-        cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
-        cv2.putText(frame, "Ball", (x - 20, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    if ball_positions:
+        for (x, y, radius, color) in ball_positions:
+            cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
+            cv2.putText(frame, "Ball", (x - 20, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     # --- Tegn staging-points (lilla) ---
-    for (x, y, r, o) in staged_balls:
-        cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-        cv2.putText(frame, "Staging", (x - 25, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+    if staged_balls:
+        for (x, y, r, o) in staged_balls:
+            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
+            cv2.putText(frame, "Staging", (x - 25, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
     if best_staging:
         x, y, r, _ = best_staging
@@ -190,24 +192,27 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
         cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
 
+    if barriers:
     # --- Tegn barriers og kryds ---
-    for (x1, y1, x2, y2), center in barriers:
-        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-        cx, cy = center
-        cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        for (x1, y1, x2, y2), center in barriers:
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            cx, cy = center
+            cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-    for (x1, y1, x2, y2) in cross:
-        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        cv2.putText(frame, "Cross", (cx - 15, cy - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+    if cross:
+        for (x1, y1, x2, y2) in cross:
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Cross", (cx - 15, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
     # --- Tegn æg ---
-    for (x, y, radius, color) in egg:
-        cv2.circle(frame, (x, y), int(radius), (0, 255, 255), 2)
-        cv2.putText(frame, "Egg", (x - 20, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+    if egg:
+        for (x, y, radius, color) in egg:
+            cv2.circle(frame, (x, y), int(radius), (0, 255, 255), 2)
+            cv2.putText(frame, "Egg", (x - 20, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
     cv2.imshow("Staging Ball Test", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):

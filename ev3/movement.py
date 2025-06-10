@@ -7,15 +7,10 @@ delivery = MediumMotor(OUTPUT_C)
 collector.on(SpeedPercent(-30))
 
 
-def move_robot(direction, speed_mode="normal"):
+def move_robot(direction):
     speed = 35  # default hastighed
     turn_speed = 7
     collector_speed = 30
-
-    if speed_mode == "slow":
-        speed = 20  # lavere hastighed for præcision
-        turn_speed = 4
-        collector_speed = 20
 
     collector.on(SpeedPercent(-collector_speed))
 
@@ -43,6 +38,22 @@ def move_robot(direction, speed_mode="normal"):
     elif direction == "continue":
         print("Continuing")
         delivery.on_for_seconds(SpeedPercent(5), 1)
+
+    elif direction == "slow_left":
+        print("Turning slowly left")
+        tank_drive.on(SpeedPercent(-2), SpeedPercent(2)) 
+
+    elif direction == "slow_right":
+        print("Turning slowly right")
+        tank_drive.on(SpeedPercent(3), SpeedPercent(-3))
+
+    elif direction == "slow_forward":
+        print("Moving slowly forward")
+        tank_drive.on(SpeedPercent(20), SpeedPercent(20)) 
+
+    elif direction == "slow_backward":
+            print("Reversing slowly")
+            tank_drive.on(SpeedPercent(-10), SpeedPercent(-10))
 
     elif direction == "stop":
         print("Stopping")
