@@ -138,7 +138,7 @@ def detect_robot(frame):
     hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
 
     # Grøn til bagende
-    lower_green = np.array([50, 60, 60])
+    lower_green = np.array([30, 50, 120])
     upper_green = np.array([100, 255, 255])
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
 

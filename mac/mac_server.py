@@ -29,7 +29,7 @@ barrier_call = 0
 has_staging = False
 staged_ball = None
 delivery_stage = 0  
-last_delivery_count = 0
+last_delivery_count = 11
 
 barriers = []
 cross = []
@@ -101,7 +101,7 @@ while True:
         staged_balls = []
 
         ###   Delivery   ###
-        if (len(ball_positions) == 0):
+        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
@@ -140,7 +140,6 @@ while True:
                     robot_3d = np.append(robot_vector, 0)
                     desired_3d = np.append(desired_vector, 0)
                     cross_product = np.cross(robot_3d, desired_3d)[2]  # kun Z-aksen er relevant
-                    print(f"cross product: {cross_product: .2f}")
                     if angle_diff > 15:
                         movement_command = "left"
                     else:
@@ -154,7 +153,7 @@ while True:
             if delivery_stage == 3:
                 dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-                if dist_back > 50:
+                if dist_back > 35:
                     movement_command = "slow_backward"
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
@@ -220,7 +219,7 @@ while True:
                 dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
                     np.array(staged_ball[:2]) - np.array(robot_position))
 
-                if barrier_blocks_path(robot_position, best_ball, egg, cross):
+                if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     y = 0
                     x = 0
                     if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
