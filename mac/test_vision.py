@@ -60,7 +60,6 @@ while True:
 
     egg = detect_egg(frame)
 
-
     robot_info = detect_robot(frame)
         
     staged_balls = []
