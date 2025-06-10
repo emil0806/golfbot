@@ -98,69 +98,72 @@ def check_barrier_proximity(point, barriers, threshold=60):
             return True
     return False
 
-def is_corner_ball(ball, margin=150):
+def is_corner_ball(ball, field_bounds, margin=150):
     x, y, _, _ = ball
+    x_min, x_max, y_min, y_max = field_bounds
 
-    in_top_left     = (x < 250 + margin and y < 50 + margin)
-    in_top_right    = (x > 1600 - margin and y < 50 + margin)
-    in_bottom_left  = (x < 250 + margin and y > 1050 - margin)
-    in_bottom_right = (x > 1600 - margin and y > 1050 - margin)
+    in_top_left     = (x < x_min + margin and y < y_min + margin)
+    in_top_right    = (x > x_max - margin and y < y_min + margin)
+    in_bottom_left  = (x < x_min + margin and y > y_max - margin)
+    in_bottom_right = (x > x_max - margin and y > y_max - margin)
 
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
 
 
-def is_edge_ball(ball, margin=150):
+def is_edge_ball(ball, field_bounds, margin=150):
     x, y, _, _ = ball
+    x_min, x_max, y_min, y_max = field_bounds
 
-    # check each edge, ignoring corners (corners are covered by is_corner_ball)
-    near_left   = 250 - margin < x < 250 + margin and 50 + margin < y < 1050 - margin
-    near_right  = 1600 - margin < x < 1600 + margin and 50 + margin < y < 1050 - margin
-    near_top    = 50 - margin < y < 50 + margin and 250 + margin < x < 1600 - margin
-    near_bottom = 1050 - margin < y < 1050 + margin and 250 + margin < x < 1600 - margin
+    near_left   = x_min - margin < x < x_min + margin and y_min + margin < y < y_max - margin
+    near_right  = x_max - margin < x < x_max + margin and y_min + margin < y < y_max - margin
+    near_top    = y_min - margin < y < y_min + margin and x_min + margin < x < x_max - margin
+    near_bottom = y_max - margin < y < y_max + margin and x_min + margin < x < x_max - margin
 
     return near_left or near_right or near_top or near_bottom
 
 
-
-def create_staging_point_edge(ball, offset_distance=200):
+def create_staging_point_edge(ball, field_bounds, offset_distance=200):
     x, y, r, o = ball
+    x_min, x_max, y_min, y_max = field_bounds
 
     # Venstre kant
-    if x < 400:
+    if abs(x - x_min) < 150:
         return (x + offset_distance, y, r, o)
     # Højre kant
-    elif x > 1200:
+    elif abs(x - x_max) < 150:
         return (x - offset_distance, y, r, o)
     # Øverste kant
-    elif y < 400:
+    elif abs(y - y_min) < 150:
         return (x, y + offset_distance, r, o)
     # Nederste kant
-    elif y > 800:
+    elif abs(y - y_max) < 150:
         return (x, y - offset_distance, r, o)
 
-    # Fallback – midt i banen
+    # Fallback
     return (x - offset_distance, y - offset_distance, r, o)
 
 
-def create_staging_point_corner(ball, offset_distance=200):
-    x, y, r, o = ball
 
-    # Koordinatsystem: 0,0 = øverste venstre hjørne
-    if x < 500 and y < 500:
-        # Øverste venstre hjørne
+def create_staging_point_corner(ball, field_bounds, offset_distance=200):
+    x, y, r, o = ball
+    x_min, x_max, y_min, y_max = field_bounds
+
+    # Øverste venstre hjørne
+    if x < x_min + 100 and y < y_min + 100:
         return (x + offset_distance, y + offset_distance, r, o)
-    elif x > 1000 and y < 500:
-        # Øverste højre hjørne
+    # Øverste højre hjørne
+    elif x > x_max - 100 and y < y_min + 100:
         return (x - offset_distance, y + offset_distance, r, o)
-    elif x < 500 and y > 500:
-        # Nederste venstre hjørne
+    # Nederste venstre hjørne
+    elif x < x_min + 100 and y > y_max - 100:
         return (x + offset_distance, y - offset_distance, r, o)
-    elif x > 1000 and y > 500:
-        # Nederste højre hjørne
+    # Nederste højre hjørne
+    elif x > x_max - 100 and y > y_max - 100:
         return (x - offset_distance, y - offset_distance, r, o)
-    
-    # Fallback: staging lidt opad
+
+    # Fallback
     return (x, y - offset_distance, r, o)
+
 
 
 # ------------------ ÆG-UNDVIGELSE ------------------

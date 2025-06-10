@@ -29,13 +29,44 @@ barrier_call = 0
 has_staging = False
 staged_ball = None
 delivery_stage = 0  
-
 last_delivery_count = 0
+
+barriers = []
+cross = []
 
 FIELD_X_MIN = None
 FIELD_X_MAX = None
 FIELD_Y_MIN = None
 FIELD_Y_MAX = None
+
+while barrier_call < 5:
+    ret, frame = cap.read()
+    if not ret:
+        print("Camera error, no frame captured")
+        continue
+    
+    robot_info = detect_robot(frame)
+
+    if robot_info:
+        robot_position, front_marker, direction = robot_info
+
+        barriers.append(detect_barriers(frame))
+        cross.append(detect_cross(frame, robot_position, front_marker))
+        barrier_call += 1
+
+if barriers:
+    flat_barriers = [b for sublist in barriers for b in sublist]
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
+    barriers = flat_barriers
+
+else:
+    barriers = []
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
+        1], 0, frame.shape[0]
+    
+if cross:
+    flat_cross = [c for sublist in cross for c in sublist]
+    cross = flat_cross
 
 while True:
     ret, frame = cap.read()
@@ -47,20 +78,6 @@ while True:
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
-
-        if (barrier_call == 0):
-            barriers = detect_barriers(frame)
-            cross = detect_cross(frame, robot_position, front_marker)
-            egg = detect_egg(frame)
-            barrier_call = 1
-            if barriers:
-                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-                    barriers)
-                barrier_call = 1
-            else:
-                barriers = []
-                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-                    1], 0, frame.shape[0]
 
         rx, ry = robot_position  
         fx, fy = front_marker 
@@ -158,10 +175,12 @@ while True:
 
             if best_ball:
                 # Lav staging-punkt hvis bolden er i hjørne eller ved kant
-                if is_corner_ball(best_ball):
-                    staging = create_staging_point_corner(best_ball)
-                elif is_edge_ball(best_ball):
-                    staging = create_staging_point_edge(best_ball)
+                field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+                if is_corner_ball(best_ball, field_bounds):
+                    staging = create_staging_point_corner(best_ball, field_bounds)
+                elif is_edge_ball(best_ball, field_bounds):
+                    staging = create_staging_point_edge(best_ball, field_bounds)
                 else:
                     staging = None
 
