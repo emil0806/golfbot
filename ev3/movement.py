@@ -7,20 +7,29 @@ delivery = MediumMotor(OUTPUT_C)
 collector.on(SpeedPercent(-30))
 
 
-def move_robot(direction):
-    collector.on(SpeedPercent(-30))
+def move_robot(direction, speed_mode="normal"):
+    speed = 35  # default hastighed
+    turn_speed = 7
+    collector_speed = 30
+
+    if speed_mode == "slow":
+        speed = 20  # lavere hastighed for præcision
+        turn_speed = 4
+        collector_speed = 20
+
+    collector.on(SpeedPercent(-collector_speed))
 
     if direction == "forward":
         print("Moving forward")
-        tank_drive.on(SpeedPercent(35), SpeedPercent(35)) 
+        tank_drive.on(SpeedPercent(speed), SpeedPercent(speed)) 
 
     elif direction == "left":
         print("Turning left")
-        tank_drive.on(SpeedPercent(-7), SpeedPercent(7)) 
+        tank_drive.on(SpeedPercent(-turn_speed), SpeedPercent(turn_speed)) 
 
     elif direction == "right":
         print("Turning right")
-        tank_drive.on(SpeedPercent(7), SpeedPercent(-7))
+        tank_drive.on(SpeedPercent(turn_speed), SpeedPercent(-turn_speed))
 
     elif direction == "backward":
         print("Reversing")
