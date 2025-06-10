@@ -266,13 +266,13 @@ def detect_cross(frame, robot_position=None, front_marker=None):
             if robot_position:
                 rx, ry = robot_position
                 dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
-                if dist < 50:  # Hvis for tæt på robot, skip
+                if dist < 100:  # Hvis for tæt på robot, skip
                     continue
             
             if front_marker:
                 rx, ry = front_marker
                 dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
-                if dist < 50:  # Hvis for tæt på robot, skip
+                if dist < 100:  # Hvis for tæt på robot, skip
                     continue
 
             cross_lines.append((x1, y1, x2, y2))

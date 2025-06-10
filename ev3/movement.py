@@ -24,10 +24,11 @@ def move_robot(direction):
 
     elif direction == "backward":
         print("Reversing")
-        tank_drive.on(SpeedPercent(-35), SpeedPercent(-35))
+        tank_drive.on(SpeedPercent(-20), SpeedPercent(-20))
     
     elif direction == "delivery":
         print("Delivering")
+        tank_drive.on(SpeedPercent(0), SpeedPercent(0))
         delivery.on_for_seconds(SpeedPercent(-5), 1)
     
     elif direction == "continue":

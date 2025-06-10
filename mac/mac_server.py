@@ -28,6 +28,9 @@ timer = 0
 barrier_call = 0
 has_staging = False
 staged_ball = None
+delivery_stage = 0  
+
+last_delivery_count = 0
 
 FIELD_X_MIN = None
 FIELD_X_MAX = None
@@ -64,93 +67,94 @@ while True:
 
         current_time = time.time()
 
-        if current_time - timer >= 1:
-            egg = detect_egg(frame)
-            ball_positions = detect_balls(frame, egg)
-            ball_positions = [(x, y, r, o) for (
-                x, y, r, o) in ball_positions if FIELD_X_MIN < x < FIELD_X_MAX and FIELD_Y_MIN < y < FIELD_Y_MAX]
-            timer = current_time
+        egg = detect_egg(frame)
+        ball_positions = detect_balls(frame, egg)
+        ball_positions = [(x, y, r, o) for (
+            x, y, r, o) in ball_positions if FIELD_X_MIN < x < FIELD_X_MAX and FIELD_Y_MIN < y < FIELD_Y_MAX]
+        timer = current_time
 
         COLLECTION_RADIUS = 20
         ball_positions = [
             (x, y, r, o) for (x, y, r, o) in ball_positions
             if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
         ]
+        
+        staged_balls = []
 
-         # Leveringsflow
-        if len(ball_positions) in [0, 4, 8] and len(ball_positions) != last_delivery_count:
-            print("Initiating delivery routine...")
-            last_delivery_count = len(ball_positions)  # ← Vigtigt! Ellers starter den forfra i næste loop
-            delivery_attempts = 0  # ← reset forsøgstæller (valgfrit)
-            
+        if (len(ball_positions) in [0, 4, 8] or delivery_stage > 0) and not last_delivery_count == len(ball_positions):
+            if delivery_stage == 0:
+                print("Initiating delivery routine...")
+                delivery_stage = 1
+
             staging_target = (1400, 530)
             back_alignment_target = (1600, 530)
 
-            # 1. Flyt til staging_target
-            dist_to_staging = np.linalg.norm(np.array(front_marker) - np.array(staging_target))
-            print("test5")
-            print(f"Distance to staging: {dist_to_staging:.2f}")
+            if delivery_stage == 1:
+                cm_x = (front_marker[0] + robot_position[0]) / 2
+                cm_y = (front_marker[1] + robot_position[1]) / 2
+                dist_to_staging = np.linalg.norm(np.array((cm_x, cm_y)) - np.array(staging_target))
+                print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
+                if dist_to_staging > 50:
+                    dummy_target = (*staging_target, 10, (255, 255, 255))
+                    command = determine_direction(robot_info, dummy_target)
+                    if command != last_command:
+                        conn.sendall(command.encode())
+                        last_command = command
+                else:
+                    delivery_stage = 2
 
-            if dist_to_staging > 50:
-                print("test")
-                dummy_target = (*staging_target, 10, (255, 255, 255))
-                command = determine_direction(robot_info, dummy_target)
-                print(f"command: {command}")
+            if delivery_stage == 2:
+                robot_vector = np.array(robot_position) - np.array(front_marker)
+                desired_vector = np.array(back_alignment_target) - np.array(robot_position)
+
+                dot = np.dot(robot_vector, desired_vector)
+                mag_r = np.linalg.norm(robot_vector)
+                mag_d = np.linalg.norm(desired_vector)
+                cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
+                angle_diff = np.degrees(np.arccos(cos_theta))
+                
+                print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
+
+                if angle_diff > 3:
+                    robot_3d = np.append(robot_vector, 0)
+                    desired_3d = np.append(desired_vector, 0)
+                    cross_product = np.cross(robot_3d, desired_3d)[2]
+                    command = "left"
+                    if command != last_command:
+                        conn.sendall(command.encode())
+                        last_command = command
+                else:
+                    delivery_stage = 3
+
+            if delivery_stage == 3:
+                dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
+                print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
+                if dist_back > 50:
+                    command = "backward"
+                    if command != last_command:
+                        conn.sendall(command.encode())
+                        last_command = command
+                else:
+                    delivery_stage = 4
+
+            if delivery_stage == 4:
+                command = "delivery"
                 if command != last_command:
-                    print("test1")
+                    print("[Stage 4] Sending delivery command")
                     conn.sendall(command.encode())
                     last_command = command
-                delivery_attempts += 1
-                if delivery_attempts > 50:
-                    print("Stuck during staging. Aborting.")
-                continue  # ← bliver ved indtil tæt nok
-
-            # 2. Roter indtil bagenden peger mod back_alignment_target
-            print("test3")
-            robot_vector = np.array(robot_position) - np.array(front_marker)
-            desired_vector = np.array(back_alignment_target) - np.array(robot_position)
-
-            dot = np.dot(robot_vector, desired_vector)
-            mag_r = np.linalg.norm(robot_vector)
-            mag_d = np.linalg.norm(desired_vector)
-            cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
-            angle_diff = np.degrees(np.arccos(cos_theta))
-
-            if angle_diff > 5:
-                # Brug 3D-vektorer for at undgå deprecation warning
-                robot_3d = np.append(robot_vector, 0)
-                desired_3d = np.append(desired_vector, 0)
-                cross = np.cross(robot_3d, desired_3d)[2]  # Z-komponenten
-
-                command = "left" if cross > 0 else "right"
+                time.sleep(3)
+                command = "continue"
                 if command != last_command:
+                    print("[Stage 4.2] Sending continue command")
                     conn.sendall(command.encode())
                     last_command = command
-                continue
-
-            # 3. Når robotten er alignet: bak mod back_alignment_target
-            dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
-            print("test2")
-            print(f"Distance to back_alignment: {dist_back:.2f}")
-            if dist_back > 40:
-                command = "backward"
-                if command != last_command:
-                    conn.sendall(command.encode())
-                    last_command = command
-                continue
-
-            # 4. Når tæt nok: send delivery
-            command = "delivery"
-            if command != last_command:
-                print("Sending delivery command")
-                conn.sendall(command.encode())
-                last_command = command
-            continue
+                delivery_stage = 0  # reset
+                last_delivery_count = len(ball_positions)
 
         else:
             pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
             best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
-            staged_balls = []
 
             if best_ball:
                 # Lav staging-punkt hvis bolden er i hjørne eller ved kant
@@ -228,34 +232,39 @@ while True:
 
         # --- Draw actual balls in green ---
         # Tegn alle bolde (grøn)
-        for (x, y, r, o) in ball_positions:
-            cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)
-            cv2.putText(frame, "Ball", (x - 20, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        if(ball_positions):
+            for (x, y, r, o) in ball_positions:
+                cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)
+                cv2.putText(frame, "Ball", (x - 20, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # Tegn staging-punkter (lilla)
-        for (x, y, r, o) in staged_balls:
-            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-            cv2.putText(frame, "Staging", (x - 25, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        if(staged_balls):
+            for (x, y, r, o) in staged_balls:
+                cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
+                cv2.putText(frame, "Staging", (x - 25, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
         # Tegn æg (gul)
-        for (ex, ey, er, _) in egg:
-            cv2.circle(frame, (ex, ey), int(er), (0, 255, 255), 2)
-            cv2.putText(frame, "Egg", (ex - 20, ey - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+        if (egg):
+            for (ex, ey, er, _) in egg:
+                cv2.circle(frame, (ex, ey), int(er), (0, 255, 255), 2)
+                cv2.putText(frame, "Egg", (ex - 20, ey - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
-        for (x1, y1, x2, y2) in cross:
-            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-            cv2.putText(frame, "Barrier", (cx - 15, cy - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+        if(cross):
+            for (x1, y1, x2, y2) in cross:
+                cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                cv2.putText(frame, "Barrier", (cx - 15, cy - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
-        for (x1, y1, x2, y2), center in barriers:
-            cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            cx, cy = center
-            cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        if(barriers):
+            for (x1, y1, x2, y2), center in barriers:
+                cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cx, cy = center
+                cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
         if robot_info:
             cv2.circle(frame, (rx, ry), 10, (255, 0, 0), 2)
