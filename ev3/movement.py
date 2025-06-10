@@ -10,7 +10,7 @@ collector.on(SpeedPercent(-30))
 def move_robot(direction):
     speed = 35  # default hastighed
     turn_speed = 7
-    collector_speed = 30
+    collector_speed = 22
 
     collector.on(SpeedPercent(-collector_speed))
 

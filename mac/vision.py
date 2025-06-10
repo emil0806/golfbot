@@ -75,7 +75,7 @@ def detect_balls(frame, egg, robot_position=None):
                 is_inside_robot = False
                 if robot_position:
                     rx, ry = robot_position
-                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 40
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
