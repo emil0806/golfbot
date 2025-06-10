@@ -14,11 +14,43 @@ last_print_time = time.time()
 check = 0
 has_staging = False
 staged_ball = None
+barrier_call = 0
+
+barriers = []
+cross = []
 
 FIELD_X_MIN = None
 FIELD_X_MAX = None
 FIELD_Y_MIN = None
 FIELD_Y_MAX = None
+
+while barrier_call < 5:
+    ret, frame = cap.read()
+    if not ret:
+        print("Camera error, no frame captured")
+        continue
+    
+    robot_info = detect_robot(frame)
+
+    if robot_info:
+        robot_position, front_marker, direction = robot_info
+
+        barriers.append(detect_barriers(frame))
+        cross.append(detect_cross(frame, robot_position, front_marker))
+        barrier_call += 1
+
+if barriers:
+    flat_barriers = [b for sublist in barriers for b in sublist]
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
+    barriers = flat_barriers
+else:
+    barriers = []
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
+        1], 0, frame.shape[0]
+    
+if cross:
+    flat_cross = [c for sublist in cross for c in sublist]
+    cross = flat_cross
 
 while True:
     ret, frame = cap.read()
@@ -40,19 +72,6 @@ while True:
         rx, ry = robot_position
         ball_positions = detect_balls(frame, egg, robot_position)
     
-        if check == 0:
-            cross = detect_cross(frame, robot_position, front_marker)
-            barriers = detect_barriers(frame, robot_position)
-            check = 1
-            if barriers:
-                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-                    barriers)
-                barrier_call = 1
-            else:
-                barriers = []
-                FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-                    1], 0, frame.shape[0]
-
         ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
                         x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
 
@@ -67,18 +86,19 @@ while True:
         best_ball = sorted_balls[0] if sorted_balls else None
 
         # Vis staging til alle kant/hjørnebolde (debug formål)
+        field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
         for ball in ball_positions:
-            if is_corner_ball(ball):
-                staged_balls.append((create_staging_point_corner(ball)))
-            elif is_edge_ball(ball):
-                staged_balls.append((create_staging_point_edge(ball)))
+            if is_corner_ball(ball, field_bounds):
+                staged_balls.append((create_staging_point_corner(ball, field_bounds)))
+            elif is_edge_ball(ball, field_bounds):
+                staged_balls.append((create_staging_point_edge(ball, field_bounds)))
 
         if best_ball:
             # Hvis best_ball er edge eller corner
-            if is_corner_ball(best_ball):
-                staging = create_staging_point_corner(best_ball)
-            elif is_edge_ball(best_ball):
-                staging = create_staging_point_edge(best_ball)
+            if is_corner_ball(best_ball, field_bounds):
+                staging = create_staging_point_corner(best_ball, field_bounds)
+            elif is_edge_ball(best_ball, field_bounds):
+                staging = create_staging_point_edge(best_ball, field_bounds)
             else:
                 staging = None
 
