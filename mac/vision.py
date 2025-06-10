@@ -182,7 +182,7 @@ def detect_robot(frame):
     return robot_orientation
 
 
-def detect_barriers(frame, robot_position=None):
+def detect_barriers(frame, robot_position=None, ball_positions=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
@@ -218,11 +218,29 @@ def detect_barriers(frame, robot_position=None):
 
     if robot_position:
         rx, ry = robot_position
+        
         filtered_barriers = []
+
         for ((x1, y1, x2, y2), (cx, cy)) in barriers:
-            dist = np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry)))
-            if dist > 40:  # justér radius hvis nødvendigt
+            # Tjek afstand til robot
+            too_close_to_robot = False
+            if robot_position:
+                rx, ry = robot_position
+                if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 50:
+                    too_close_to_robot = True
+
+            # Tjek afstand til bolde
+            too_close_to_ball = False
+            if ball_positions:
+                for (bx, by, _, _) in ball_positions:
+                    if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
+                        too_close_to_ball = True
+                        break
+
+            # Hvis ikke for tæt på noget, behold barrieren
+            if not too_close_to_robot and not too_close_to_ball:
                 filtered_barriers.append(((x1, y1, x2, y2), (cx, cy)))
+
         return filtered_barriers
     else:
         return barriers

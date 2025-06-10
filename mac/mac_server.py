@@ -46,11 +46,13 @@ while barrier_call < 5:
         continue
     
     robot_info = detect_robot(frame)
+    egg = detect_egg(frame)
+    ball_positions = detect_balls(frame, egg)
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame))
+        barriers.append(detect_barriers(frame, robot_position, ball_positions))
         cross.append(detect_cross(frame, robot_position, front_marker))
         barrier_call += 1
 
