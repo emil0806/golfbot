@@ -113,14 +113,20 @@ while True:
                 mag_d = np.linalg.norm(desired_vector)
                 cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
                 angle_diff = np.degrees(np.arccos(cos_theta))
-                
+
                 print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
 
                 if angle_diff > 3:
+                    # Brug 3D vektorer til at finde drejeretning (z-komponenten af krydsprodukt)
                     robot_3d = np.append(robot_vector, 0)
                     desired_3d = np.append(desired_vector, 0)
-                    cross_product = np.cross(robot_3d, desired_3d)[2]
-                    command = "left"
+                    cross_product = np.cross(robot_3d, desired_3d)[2]  # kun Z-aksen er relevant
+
+                    if cross_product > 0:
+                        command = "left"
+                    else:
+                        command = "right"
+
                     if command != last_command:
                         conn.sendall(command.encode())
                         last_command = command
