@@ -3,7 +3,7 @@ import numpy as np
 
 egg_location = []
 
-def detect_balls(frame, egg, robot_position=None):
+def detect_balls(frame, egg, robot_position=None, front_marker=None):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -73,9 +73,13 @@ def detect_balls(frame, egg, robot_position=None):
                 # Tjek at bold ikke er inde i et æg
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
-                if robot_position:
+                if robot_position and front_marker:
+                    # Brug midtpunkt mellem bagende og front
                     rx, ry = robot_position
-                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+                    fx, fy = front_marker
+                    mid_x = (rx + fx) // 2
+                    mid_y = (ry + fy) // 2
+                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((mid_x, mid_y))) < 100
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
@@ -259,7 +263,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
         return barriers
 
 
-def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None):
+def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, barriers=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -314,6 +318,18 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
         if not too_close_to_robot and not too_close_to_ball:
             cross_lines.append((x1, y1, x2, y2))
+
+    if barriers:
+        filtered = []
+        for (x1, y1, x2, y2) in cross_lines:
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            too_close_to_barrier = any(
+                np.linalg.norm(np.array((cx, cy)) - np.array(b_center)) < 40
+                for (_, b_center) in barriers
+            )
+            if not too_close_to_barrier:
+                filtered.append((x1, y1, x2, y2))
+        cross_lines = filtered
 
     # Debug mask
     cv2.imshow("Cross Mask", mask)

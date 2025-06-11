@@ -1,7 +1,10 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, barrier_blocks_path, close_to_barrier
+from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
+    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
+    egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
+    barrier_blocks_path, close_to_barrier, set_homography)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from config import EV3_IP, PORT
@@ -49,20 +52,50 @@ while barrier_call < 5:
     
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
-    ball_positions = detect_balls(frame, egg)
+    if robot_info:
+        robot_position, front_marker, _ = robot_info
+    else:
+        robot_position = front_marker = None
+    ball_positions = detect_balls(frame, egg, robot_position, front_marker)
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame, robot_position, ball_positions))
-        cross.append(detect_cross(frame, robot_position, front_marker, ball_positions))
-    
-    barrier_call += 1
+        bar = detect_barriers(frame, robot_position, ball_positions)
+        barriers.append(bar)
+        cross.append(
+            detect_cross(frame,
+                         robot_position,
+                         front_marker,
+                         ball_positions,
+                         bar)
+        )
+        barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
     barriers = flat_barriers
+
+    # ----------  BEREGN HOMOGRAFI  ---------------
+    PIX_CORNERS = np.float32([
+        [FIELD_X_MIN, FIELD_Y_MIN],   # top-left
+        [FIELD_X_MAX, FIELD_Y_MIN],   # top-right
+        [FIELD_X_MAX, FIELD_Y_MAX],   # bottom-right
+        [FIELD_X_MIN, FIELD_Y_MAX]    # bottom-left
+    ])
+
+    # Kendt faktisk bane-størrelse i mm  (tilpas hvis nødvendigt)
+    FIELD_W, FIELD_H = 1800, 1200
+    WORLD_CORNERS = np.float32([
+        [0,        0],
+        [FIELD_W,  0],
+        [FIELD_W,  FIELD_H],
+        [0,        FIELD_H]
+    ])
+
+    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+    set_homography(H)                    # gem matrixen globalt i pathfinding.py
 
 else:
     barriers = []
@@ -90,7 +123,7 @@ while True:
         current_time = time.time()
 
         egg = detect_egg(frame)
-        ball_positions = detect_balls(frame, egg)
+        ball_positions = detect_balls(frame, egg, robot_position, front_marker)
         ball_positions = [(x, y, r, o) for (
             x, y, r, o) in ball_positions if FIELD_X_MIN < x < FIELD_X_MAX and FIELD_Y_MIN < y < FIELD_Y_MAX]
         timer = current_time

@@ -6,7 +6,7 @@ from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
     create_staging_point_edge, create_staging_point_corner,
-    barrier_blocks_path, sort_balls_by_distance
+    barrier_blocks_path, sort_balls_by_distance, set_homography
 )
 
 cap = cv2.VideoCapture(0)
@@ -35,8 +35,19 @@ while barrier_call < 5:
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame))
-        cross.append(detect_cross(frame, robot_position, front_marker))
+        egg = detect_egg(frame)
+        ball_positions = detect_balls(frame, egg,
+                                       robot_position, front_marker)
+
+        bar = detect_barriers(frame, robot_position, ball_positions)
+        barriers.append(bar)
+
+        cross_line = detect_cross(frame,
+                                  robot_position,
+                                  front_marker,
+                                  ball_positions,
+                                  bar)
+        cross.append(cross_line)
         barrier_call += 1
 
 if barriers:
@@ -48,6 +59,23 @@ else:
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
         1], 0, frame.shape[0]
     
+    # Homografi til test  (samme logik som i mac_server.py)
+    PIX_CORNERS = np.float32([
+        [FIELD_X_MIN, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MAX],
+        [FIELD_X_MIN, FIELD_Y_MAX]
+    ])
+    FIELD_W, FIELD_H = 1800, 1200
+    WORLD_CORNERS = np.float32([
+        [0,        0],
+        [FIELD_W,  0],
+        [FIELD_W,  FIELD_H],
+        [0,        FIELD_H]
+    ])
+    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+    set_homography(H)
+
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
     cross = flat_cross
@@ -69,7 +97,7 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
-        ball_positions = detect_balls(frame, egg, robot_position)
+        ball_positions = detect_balls(frame, egg, robot_position, front_marker)
     
         ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
                         x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
