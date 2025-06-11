@@ -6,7 +6,7 @@ from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
     create_staging_point_edge, create_staging_point_corner,
-    barrier_blocks_path, sort_balls_by_distance
+    barrier_blocks_path, sort_balls_by_distance, set_homography
 )
 
 cap = cv2.VideoCapture(0)
@@ -59,6 +59,23 @@ else:
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
         1], 0, frame.shape[0]
     
+    # Homografi til test  (samme logik som i mac_server.py)
+    PIX_CORNERS = np.float32([
+        [FIELD_X_MIN, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MAX],
+        [FIELD_X_MIN, FIELD_Y_MAX]
+    ])
+    FIELD_W, FIELD_H = 1800, 1200
+    WORLD_CORNERS = np.float32([
+        [0,        0],
+        [FIELD_W,  0],
+        [FIELD_W,  FIELD_H],
+        [0,        FIELD_H]
+    ])
+    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+    set_homography(H)
+
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
     cross = flat_cross
