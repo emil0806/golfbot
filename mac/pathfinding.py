@@ -1,4 +1,24 @@
 import math
+import numpy as np, cv2              # ← NYT
+
+# ----------------  PIXEL → WORLD  -----------------
+# Homografi-matrixen H sættes én gang fra mac_server.py
+H = None
+
+def set_homography(H_matrix):
+    """Kalds én gang i starten – gemmer homografi-matrixen globalt."""
+    global H
+    H = H_matrix
+
+def pix2world(pt):
+    """Konverter (x,y) pixel → (X,Y) gulvplan via homografi."""
+    if H is None:
+        return pt          # fallback hvis ingen homografi endnu
+    x, y = pt
+    uv1 = np.array([[x, y, 1.]], dtype=float).T   # 3×1
+    XY1 = H @ uv1
+    return (float(XY1[0,0]/XY1[2,0]),
+            float(XY1[1,0]/XY1[2,0]))
 
 previous_best_ball = None
 
@@ -47,9 +67,11 @@ def determine_direction(robot_position, ball_position):
     if not robot_position or not ball_position:
         return "stop"
 
-    bx, by = ball_position[:2] 
+    bx, by   = pix2world(ball_position[:2])
 
-    (rx, ry), (fx, fy), _ = robot_position 
+    (rx_p, ry_p), (fx_p, fy_p), _ = robot_position
+    rx, ry   = pix2world((rx_p, ry_p))
+    fx, fy   = pix2world((fx_p, fy_p))
 
     vector_to_ball = (bx - rx, by - ry)
     vector_front = (fx - rx, fy - ry)   
@@ -63,15 +85,19 @@ def determine_direction(robot_position, ball_position):
     # Determine if angle is to the left or right using cross product
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
 
-    if angle_difference < 1.5:
+    if angle_difference < 2.5:
         return "forward"
     elif cross < 0:
-        if angle_difference > 15:
+        if angle_difference > 25:
+            return "fast_right"
+        elif angle_difference > 15:
             return "right"
         else:
             return "slow_right"
     else:
-        if angle_difference > 15:
+        if angle_difference > 25:
+            return "fast_right"
+        elif angle_difference > 15:
             return "left"
         else:
             return "slow_left"

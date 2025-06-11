@@ -1,7 +1,10 @@
 import socket
 import time
 import cv2
-from pathfinding import determine_direction, find_best_ball, sort_balls_by_distance, is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, barrier_blocks_path, close_to_barrier
+from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
+    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
+    egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
+    barrier_blocks_path, close_to_barrier, set_homography)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from config import EV3_IP, PORT
@@ -27,9 +30,11 @@ last_command = None
 timer = 0
 barrier_call = 0
 has_staging = False
+at_staging = False
 staged_ball = None
 delivery_stage = 0  
 last_delivery_count = 11
+prev_ball_count = 11
 
 barriers = []
 cross = []
@@ -47,19 +52,50 @@ while barrier_call < 5:
     
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
-    ball_positions = detect_balls(frame, egg)
+    if robot_info:
+        robot_position, front_marker, _ = robot_info
+    else:
+        robot_position = front_marker = None
+    ball_positions = detect_balls(frame, egg, robot_position, front_marker)
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame, robot_position, ball_positions))
-        cross.append(detect_cross(frame, robot_position, front_marker, ball_positions))
+        bar = detect_barriers(frame, robot_position, ball_positions)
+        barriers.append(bar)
+        cross.append(
+            detect_cross(frame,
+                         robot_position,
+                         front_marker,
+                         ball_positions,
+                         bar)
+        )
         barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
     barriers = flat_barriers
+
+    # ----------  BEREGN HOMOGRAFI  ---------------
+    PIX_CORNERS = np.float32([
+        [FIELD_X_MIN, FIELD_Y_MIN],   # top-left
+        [FIELD_X_MAX, FIELD_Y_MIN],   # top-right
+        [FIELD_X_MAX, FIELD_Y_MAX],   # bottom-right
+        [FIELD_X_MIN, FIELD_Y_MAX]    # bottom-left
+    ])
+
+    # Kendt faktisk bane-størrelse i mm  (tilpas hvis nødvendigt)
+    FIELD_W, FIELD_H = 1800, 1200
+    WORLD_CORNERS = np.float32([
+        [0,        0],
+        [FIELD_W,  0],
+        [FIELD_W,  FIELD_H],
+        [0,        FIELD_H]
+    ])
+
+    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+    set_homography(H)                    # gem matrixen globalt i pathfinding.py
 
 else:
     barriers = []
@@ -87,7 +123,7 @@ while True:
         current_time = time.time()
 
         egg = detect_egg(frame)
-        ball_positions = detect_balls(frame, egg)
+        ball_positions = detect_balls(frame, egg, robot_position, front_marker)
         ball_positions = [(x, y, r, o) for (
             x, y, r, o) in ball_positions if FIELD_X_MIN < x < FIELD_X_MAX and FIELD_Y_MIN < y < FIELD_Y_MAX]
         timer = current_time
@@ -99,6 +135,10 @@ while True:
         ]
         
         staged_balls = []
+
+        if (len(ball_positions) != prev_ball_count):
+            at_staging = False
+            prev_ball_count = len(ball_positions)
 
         ###   Delivery   ###
         if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
@@ -153,7 +193,7 @@ while True:
             if delivery_stage == 3:
                 dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-                if dist_back > 35:
+                if dist_back > 85:
                     movement_command = "slow_backward"
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
@@ -183,7 +223,7 @@ while True:
             if best_ball:
                 # Lav staging-punkt hvis bolden er i hjørne eller ved kant
                 field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-
+                
                 if is_corner_ball(best_ball, field_bounds):
                     staging = create_staging_point_corner(best_ball, field_bounds)
                 elif is_edge_ball(best_ball, field_bounds):
@@ -211,13 +251,16 @@ while True:
                     cos_theta = max(-1, min(1, dot / (mag_r * mag_b + 1e-6)))
                     angle_diff = np.degrees(np.arccos(cos_theta))
 
-                    if (staging_dist > 80 and angle_diff > 10) or ball_dist > 120:
+                    if (staging_dist < 100):
+                        at_staging = True
+
+                    if not at_staging:
                         # Erstat best_ball med staging
                         staged_balls.append(staging)
                         best_ball = staging  # overskriv best_ball med staging-punktet
 
-                dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
-                    np.array(staged_ball[:2]) - np.array(robot_position))
+                    dist_to_staged_ball = 0 if staging is None else np.linalg.norm(
+                        np.array(staging[:2]) - np.array(robot_position))
 
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     y = 0
@@ -251,10 +294,10 @@ while True:
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
-                time.sleep(3)
+                time.sleep(2)
                 movement_command = "backward"
                 conn.sendall(movement_command.encode())
-                time.sleep(2)
+                time.sleep(1)
                 last_command = "backward"
 
             movement_command = determine_direction(robot_info, best_ball)
