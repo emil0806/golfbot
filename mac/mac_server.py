@@ -193,7 +193,7 @@ while True:
             if delivery_stage == 3:
                 dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-                if dist_back > 85:
+                if dist_back > 95:
                     movement_command = "slow_backward"
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
@@ -291,7 +291,7 @@ while True:
                     has_staging = False
                     staged_ball = None
 
-            if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1:
+            if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
                 time.sleep(2)

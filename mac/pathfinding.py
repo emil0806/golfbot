@@ -96,7 +96,7 @@ def determine_direction(robot_position, ball_position):
             return "slow_right"
     else:
         if angle_difference > 25:
-            return "fast_right"
+            return "fast_left"
         elif angle_difference > 15:
             return "left"
         else:
