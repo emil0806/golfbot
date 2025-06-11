@@ -47,13 +47,24 @@ while barrier_call < 5:
     
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
-    ball_positions = detect_balls(frame, egg)
+    if robot_info:
+        robot_position, front_marker, _ = robot_info
+    else:
+        robot_position = front_marker = None
+    ball_positions = detect_balls(frame, egg, robot_position, front_marker)
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame, robot_position, ball_positions))
-        cross.append(detect_cross(frame, robot_position, front_marker, ball_positions))
+        bar = detect_barriers(frame, robot_position, ball_positions)
+        barriers.append(bar)
+        cross.append(
+            detect_cross(frame,
+                         robot_position,
+                         front_marker,
+                         ball_positions,
+                         bar)
+        )
         barrier_call += 1
 
 if barriers:
@@ -87,7 +98,7 @@ while True:
         current_time = time.time()
 
         egg = detect_egg(frame)
-        ball_positions = detect_balls(frame, egg)
+        ball_positions = detect_balls(frame, egg, robot_position, front_marker)
         ball_positions = [(x, y, r, o) for (
             x, y, r, o) in ball_positions if FIELD_X_MIN < x < FIELD_X_MAX and FIELD_Y_MIN < y < FIELD_Y_MAX]
         timer = current_time

@@ -263,7 +263,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
         return barriers
 
 
-def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None):
+def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, barriers=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -318,6 +318,18 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
         if not too_close_to_robot and not too_close_to_ball:
             cross_lines.append((x1, y1, x2, y2))
+
+    if barriers:
+        filtered = []
+        for (x1, y1, x2, y2) in cross_lines:
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            too_close_to_barrier = any(
+                np.linalg.norm(np.array((cx, cy)) - np.array(b_center)) < 40
+                for (_, b_center) in barriers
+            )
+            if not too_close_to_barrier:
+                filtered.append((x1, y1, x2, y2))
+        cross_lines = filtered
 
     # Debug mask
     cv2.imshow("Cross Mask", mask)

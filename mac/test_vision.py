@@ -35,8 +35,19 @@ while barrier_call < 5:
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        barriers.append(detect_barriers(frame))
-        cross.append(detect_cross(frame, robot_position, front_marker))
+        egg = detect_egg(frame)
+        ball_positions = detect_balls(frame, egg,
+                                       robot_position, front_marker)
+
+        bar = detect_barriers(frame, robot_position, ball_positions)
+        barriers.append(bar)
+
+        cross_line = detect_cross(frame,
+                                  robot_position,
+                                  front_marker,
+                                  ball_positions,
+                                  bar)
+        cross.append(cross_line)
         barrier_call += 1
 
 if barriers:
@@ -69,7 +80,7 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
-        ball_positions = detect_balls(frame, egg, robot_position)
+        ball_positions = detect_balls(frame, egg, robot_position, front_marker)
     
         ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
                         x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
