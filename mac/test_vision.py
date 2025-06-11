@@ -38,7 +38,7 @@ while barrier_call < 5:
         barriers.append(detect_barriers(frame))
         cross.append(detect_cross(frame, robot_position, front_marker))
         barrier_call += 1
-
+ 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
@@ -51,6 +51,65 @@ else:
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
     cross = flat_cross
+
+# ---------- 1. forsøg: polygon-hjørner ----------
+def order_points(pts: np.ndarray) -> np.ndarray:
+    """
+    Returnér punkter i rækkefølgen:
+    [top-left, top-right, bottom-right, bottom-left]
+    """
+    pts = pts.astype(np.float32)
+    s   = pts.sum(axis=1)           # x + y
+    diff = np.diff(pts, axis=1).flatten()  # x − y
+
+    tl = pts[np.argmin(s)]
+    br = pts[np.argmax(s)]
+    tr = pts[np.argmin(diff)]
+    bl = pts[np.argmax(diff)]
+    return np.array([tl, tr, br, bl], dtype=np.float32)
+
+
+def find_corners(lines):
+    if not lines:
+        return None
+    pts = []
+    for (x1, y1, x2, y2), _ in lines:
+        pts.extend([(x1, y1), (x2, y2)])
+    pts = np.float32(pts)
+    hull = cv2.convexHull(pts)
+    poly = cv2.approxPolyDP(hull, 0.02 * cv2.arcLength(hull, True), True)
+    if len(poly) != 4:
+        return None
+    return order_points(poly.reshape(-1, 2))
+
+
+src_pts = find_corners(flat_barriers)
+
+# ---------- fallback til bounding-box ----------
+if src_pts is None:
+    if flat_barriers:
+        FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
+    else:
+        FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[1], 0, frame.shape[0]
+    src_pts = np.float32([
+        [FIELD_X_MIN, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MIN],
+        [FIELD_X_MAX, FIELD_Y_MAX],
+        [FIELD_X_MIN, FIELD_Y_MAX]
+    ])
+
+# ---------- homografi ----------
+FIELD_W = int(max(src_pts[:,0]) - min(src_pts[:,0]))
+FIELD_H = int(max(src_pts[:,1]) - min(src_pts[:,1]))
+dst_pts = np.float32([[0,0],[FIELD_W,0],[FIELD_W,FIELD_H],[0,FIELD_H]])
+H,  _ = cv2.findHomography(src_pts, dst_pts)
+Hinv,_ = cv2.findHomography(dst_pts, src_pts)
+
+def to_top(pt):
+    return tuple(cv2.perspectiveTransform(np.array([[pt]],np.float32), H)[0][0])
+def to_img(pt):
+    return tuple(cv2.perspectiveTransform(np.array([[pt]],np.float32), Hinv)[0][0])
+
 
 while True:
     ret, frame = cap.read()
@@ -69,48 +128,58 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
+        
+        robot_top = to_top(robot_position)
+        front_top = to_top(front_marker)
+
         ball_positions = detect_balls(frame, egg, robot_position)
-    
-        ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
-                        x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
+        balls_top = [(*to_top((x, y)), r, o) for (x, y, r, o) in ball_positions]
+
+        # ----------------- FELTGRÆNSER I TOP-VIEW --------------
+        x_min, x_max, y_min, y_max = 0, FIELD_W, 0, FIELD_H
+        balls_top = [
+            (x, y, r, o) for (x, y, r, o) in balls_top
+            if x_min + 10 < x < x_max - 10 and y_min + 10 < y < y_max - 10
+        ]
 
         # Filtrér bolde for afstand til robot
         COLLECTION_RADIUS = 20
-        ball_positions = [
-            (x, y, r, o) for (x, y, r, o) in ball_positions
-            if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
+        balls_top = [
+            (x, y, r, o) for (x, y, r, o) in balls_top
+            if np.linalg.norm(np.array((x, y)) - np.array((robot_top))) > COLLECTION_RADIUS
         ]
 
-        sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
-        best_ball = sorted_balls[0] if sorted_balls else None
+        sorted_balls = sort_balls_by_distance(balls_top, front_top)
+        best_ball    = sorted_balls[0] if sorted_balls else None
 
         # Vis staging til alle kant/hjørnebolde (debug formål)
-        field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-        for ball in ball_positions:
-            if is_corner_ball(ball, field_bounds):
-                staged_balls.append((create_staging_point_corner(ball, field_bounds)))
-            elif is_edge_ball(ball, field_bounds):
-                staged_balls.append((create_staging_point_edge(ball, field_bounds)))
+        field_bounds_top = (x_min, x_max, y_min, y_max)
+
+        for ball in balls_top:
+            if is_corner_ball(ball, field_bounds_top):
+                staged_balls.append((create_staging_point_corner(ball, field_bounds_top)))
+            elif is_edge_ball(ball, field_bounds_top):
+                staged_balls.append((create_staging_point_edge(ball, field_bounds_top)))
 
         if best_ball:
             # Hvis best_ball er edge eller corner
-            if is_corner_ball(best_ball, field_bounds):
-                staging = create_staging_point_corner(best_ball, field_bounds)
-            elif is_edge_ball(best_ball, field_bounds):
-                staging = create_staging_point_edge(best_ball, field_bounds)
+            if is_corner_ball(best_ball, field_bounds_top):
+                staging = create_staging_point_corner(best_ball, field_bounds_top)
+            elif is_edge_ball(best_ball, field_bounds_top):
+                staging = create_staging_point_edge(best_ball, field_bounds_top)
             else:
                 staging = None
 
             if staging:
                 staging_dist = np.linalg.norm(
-                    np.array(staging[:2]) - np.array(front_marker))
+                    np.array(staging[:2]) - np.array(front_top))
                 ball_dist = np.linalg.norm(
-                    np.array(best_ball[:2]) - np.array(front_marker))
+                    np.array(best_ball[:2]) - np.array(front_top))
 
-                robot_vector = np.array(front_marker) - \
-                    np.array(robot_position)
+                robot_vector = np.array(front_top) - \
+                    np.array(robot_top)
                 ball_vector = np.array(
-                    best_ball[:2]) - np.array(robot_position)
+                    best_ball[:2]) - np.array(robot_top)
 
                 dot = np.dot(robot_vector, ball_vector)
                 mag_r = np.linalg.norm(robot_vector)
@@ -125,7 +194,7 @@ while True:
             dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
                 np.array(staged_ball[:2]) - np.array(robot_position))
 
-            if barrier_blocks_path(robot_position, best_ball, egg, cross):
+            if barrier_blocks_path(robot_top, best_ball, egg, cross):
                 y = 0
                 x = 0
                 if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
@@ -171,15 +240,17 @@ while True:
     # --- Tegn staging-points (lilla) ---
     if staged_balls:
         for (x, y, r, o) in staged_balls:
-            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-            cv2.putText(frame, "Staging", (x - 25, y - 10),
+            ix, iy = to_img((x, y))  # warp tilbage til billedkoordinater
+            cv2.circle(frame, (int(ix), int(iy)), int(r), (255, 0, 255), 2)
+            cv2.putText(frame, "Staging", (int(ix) - 25, int(iy) - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-
     if best_staging:
-        x, y, r, _ = best_staging
-        cv2.circle(frame, (x, y), int(r), (255, 0, 0), 2)
-        cv2.putText(frame, "Best Staging", (x - 35, y - 10),
+        ix, iy = to_img(best_staging[:2])
+        r = best_staging[2]
+        cv2.circle(frame, (int(ix), int(iy)), int(r), (255, 0, 0), 2)
+        cv2.putText(frame, "Best Staging", (int(ix) - 35, int(iy) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
 
     # --- Tegn robot ---
     if robot_info:
@@ -215,8 +286,61 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
     cv2.imshow("Staging Ball Test", frame)
+
+    # Drawing top image
+    top_dbg = cv2.warpPerspective(frame, H, (FIELD_W, FIELD_H))
+
+    # Robot
+    if robot_info:
+        cv2.circle(top_dbg, (int(robot_top[0]), int(robot_top[1])), 10, (255, 0, 0), 2)
+        cv2.circle(top_dbg, (int(front_top[0]), int(front_top[1])), 10, (0, 165, 255), 2)
+        cv2.arrowedLine(top_dbg,
+                        (int(robot_top[0]), int(robot_top[1])),
+                        (int(front_top[0]), int(front_top[1])), (0, 255, 0), 2)
+
+    # Bolde
+    if balls_top:
+        for (x, y, r, _) in balls_top if robot_info else []:
+            cv2.circle(top_dbg, (int(x), int(y)), int(r), (0, 255, 0), 2)
+
+    # Staging-punkter
+    if staged_balls:
+        for (sx, sy, r, _) in staged_balls:
+            cv2.circle(top_dbg, (int(sx), int(sy)), int(r), (255, 0, 255), 2)
+
+    if best_staging:
+        cv2.circle(top_dbg, (int(best_staging[0]), int(best_staging[1])),
+                   int(best_staging[2]), (255, 0, 0), 2)
+
+    if barriers:
+        for (x1, y1, x2, y2), _ in barriers:
+            tx1, ty1 = to_top((x1, y1))
+            tx2, ty2 = to_top((x2, y2))
+            cv2.line(top_dbg,
+                    (int(tx1), int(ty1)),
+                    (int(tx2), int(ty2)),
+                    (0, 0, 255), 2) 
+    if cross:
+        for (x1, y1, x2, y2) in cross:
+            tx1, ty1 = to_top((x1, y1))
+            tx2, ty2 = to_top((x2, y2))
+            cv2.line(top_dbg,
+                    (int(tx1), int(ty1)),
+                    (int(tx2), int(ty2)),
+                    (0, 0, 255), 2)
+
+    if egg:
+        for (ex, ey, er, _) in egg:
+            tex, tey = to_top((ex, ey))
+            cv2.circle(top_dbg,
+                    (int(tex), int(tey)),
+                    int(er),
+                    (0, 255, 255), 2)
+        
+    cv2.imshow("Top-view (debug)", top_dbg)
+    
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
-
+        
 cap.release()
 cv2.destroyAllWindows()
