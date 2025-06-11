@@ -3,7 +3,7 @@ import numpy as np
 
 egg_location = []
 
-def detect_balls(frame, egg, robot_position=None):
+def detect_balls(frame, egg, robot_position=None, front_marker=None):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -73,9 +73,13 @@ def detect_balls(frame, egg, robot_position=None):
                 # Tjek at bold ikke er inde i et æg
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
-                if robot_position:
+                if robot_position and front_marker:
+                    # Brug midtpunkt mellem bagende og front
                     rx, ry = robot_position
-                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 40
+                    fx, fy = front_marker
+                    mid_x = (rx + fx) // 2
+                    mid_y = (ry + fy) // 2
+                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((mid_x, mid_y))) < 40
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
