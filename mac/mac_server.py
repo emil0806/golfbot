@@ -28,7 +28,7 @@ timer = 0
 barrier_call = 0
 has_staging = False
 staged_ball = None
-delivery_stage = 0  
+delivery_stage = 0
 last_delivery_count = 11
 
 barriers = []
@@ -44,7 +44,7 @@ while barrier_call < 5:
     if not ret:
         print("Camera error, no frame captured")
         continue
-    
+
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
     ball_positions = detect_balls(frame, egg)
@@ -53,19 +53,21 @@ while barrier_call < 5:
         robot_position, front_marker, direction = robot_info
 
         barriers.append(detect_barriers(frame, robot_position, ball_positions))
-        cross.append(detect_cross(frame, robot_position, front_marker, ball_positions))
+        cross.append(detect_cross(frame, robot_position,
+                     front_marker, ball_positions))
         barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
+        flat_barriers)
     barriers = flat_barriers
 
 else:
     barriers = []
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
         1], 0, frame.shape[0]
-    
+
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
     cross = flat_cross
@@ -81,8 +83,8 @@ while True:
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        rx, ry = robot_position  
-        fx, fy = front_marker 
+        rx, ry = robot_position
+        fx, fy = front_marker
 
         current_time = time.time()
 
@@ -97,7 +99,7 @@ while True:
             (x, y, r, o) for (x, y, r, o) in ball_positions
             if np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) > COLLECTION_RADIUS
         ]
-        
+
         staged_balls = []
 
         ###   Delivery   ###
@@ -106,17 +108,21 @@ while True:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
 
-                staging_target = (FIELD_X_MAX - 200, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
-                back_alignment_target = (FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+                staging_target = (FIELD_X_MAX - 200,
+                                  (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+                back_alignment_target = (
+                    FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
 
             if delivery_stage == 1:
                 cm_x = (front_marker[0] + robot_position[0]) / 2
                 cm_y = (front_marker[1] + robot_position[1]) / 2
-                dist_to_staging = np.linalg.norm(np.array((cm_x, cm_y)) - np.array(staging_target))
+                dist_to_staging = np.linalg.norm(
+                    np.array((cm_x, cm_y)) - np.array(staging_target))
                 print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
                 if dist_to_staging > 50:
                     dummy_target = (*staging_target, 10, (255, 255, 255))
-                    movement_command = determine_direction(robot_info, dummy_target)
+                    movement_command = determine_direction(
+                        robot_info, dummy_target)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
                         last_command = movement_command
@@ -124,8 +130,10 @@ while True:
                     delivery_stage = 2
 
             if delivery_stage == 2:
-                robot_vector = np.array(robot_position) - np.array(front_marker)
-                desired_vector = np.array(back_alignment_target) - np.array(robot_position)
+                robot_vector = np.array(
+                    robot_position) - np.array(front_marker)
+                desired_vector = np.array(
+                    back_alignment_target) - np.array(robot_position)
 
                 dot = np.dot(robot_vector, desired_vector)
                 mag_r = np.linalg.norm(robot_vector)
@@ -139,7 +147,8 @@ while True:
                     # Brug 3D vektorer til at finde drejeretning (z-komponenten af krydsprodukt)
                     robot_3d = np.append(robot_vector, 0)
                     desired_3d = np.append(desired_vector, 0)
-                    cross_product = np.cross(robot_3d, desired_3d)[2]  # kun Z-aksen er relevant
+                    cross_product = np.cross(robot_3d, desired_3d)[
+                        2]  # kun Z-aksen er relevant
                     if angle_diff > 15:
                         movement_command = "left"
                     else:
@@ -151,7 +160,8 @@ while True:
                     delivery_stage = 3
 
             if delivery_stage == 3:
-                dist_back = np.linalg.norm(np.array(robot_position) - np.array(back_alignment_target))
+                dist_back = np.linalg.norm(
+                    np.array(robot_position) - np.array(back_alignment_target))
                 print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
                 if dist_back > 35:
                     movement_command = "slow_backward"
@@ -177,21 +187,25 @@ while True:
                 last_delivery_count = len(ball_positions)
 
         else:
-            pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
+            pre_sorted_balls = sort_balls_by_distance(
+                ball_positions, front_marker)
             best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
 
             if best_ball:
                 # Lav staging-punkt hvis bolden er i hjørne eller ved kant
-                field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                field_bounds = (FIELD_X_MIN, FIELD_X_MAX,
+                                FIELD_Y_MIN, FIELD_Y_MAX)
 
                 if is_corner_ball(best_ball, field_bounds):
-                    staging = create_staging_point_corner(best_ball, field_bounds)
+                    staging = create_staging_point_corner(
+                        best_ball, field_bounds)
                 elif is_edge_ball(best_ball, field_bounds):
-                    staging = create_staging_point_edge(best_ball, field_bounds)
+                    staging = create_staging_point_edge(
+                        best_ball, field_bounds)
                 else:
                     staging = None
 
-                # Æg-undvigelse
+                # ----------- Æg-undvigelse -----------
                 if staging:
                     # Check afstand og vinkel til staging
                     staging_dist = np.linalg.norm(
@@ -238,8 +252,9 @@ while True:
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
-                elif(has_staging and dist_to_staged_ball > 50):
-                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
+                elif (has_staging and dist_to_staged_ball > 50):
+                    staging = (best_ball[0], robot_position[1],
+                               best_ball[2], best_ball[3])
                     best_ball = staging  # brug stagingpunkt som mål
                     staged_balls.append(best_ball)
                     staged_ball = staging
@@ -259,22 +274,32 @@ while True:
 
             movement_command = determine_direction(robot_info, best_ball)
 
-            if movement_command != last_command:
-                print(f"Sending command:  {movement_command}")
+            # Tilføj slow loigk - kun forward, left og rigt bliver slow
+            if movement_command in ["left", "right", "forward"]:
+                tx, ty = best_ball[:2]
+                rx, ry = robot_position[:2]
+                dist = np.hypot(tx - rx, ty - ry)
 
+                # Hvis mål er hjørne eller kan, så slow ned
+                if (is_corner_ball(best_ball, field_bounds) or is_edge_ball(best_ball, field_bounds)) and dist < 150:
+                    movement_command = "slow_" + movement_command
+
+            # Send kun kun hvis ny kommando
+            if movement_command != last_command:
+                print(f"Sending command: {movement_command}")
                 conn.sendall(movement_command.encode())
                 last_command = movement_command
 
         # --- Draw actual balls in green ---
         # Tegn alle bolde (grøn)
-        if(ball_positions):
+        if (ball_positions):
             for (x, y, r, o) in ball_positions:
                 cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)
                 cv2.putText(frame, "Ball", (x - 20, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # Tegn staging-punkter (lilla)
-        if(staged_balls):
+        if (staged_balls):
             for (x, y, r, o) in staged_balls:
                 cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
                 cv2.putText(frame, "Staging", (x - 25, y - 10),
@@ -287,14 +312,14 @@ while True:
                 cv2.putText(frame, "Egg", (ex - 20, ey - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
-        if(cross):
+        if (cross):
             for (x1, y1, x2, y2) in cross:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
                 cv2.putText(frame, "Barrier", (cx - 15, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
-        if(barriers):
+        if (barriers):
             for (x1, y1, x2, y2), center in barriers:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 cx, cy = center
