@@ -245,7 +245,6 @@ while True:
                 else:
                     staging = None
 
-                # ----------- Æg-undvigelse -----------
                 if staging:
                     # Check afstand og vinkel til staging
                     staging_dist = np.linalg.norm(
