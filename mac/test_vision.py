@@ -48,7 +48,7 @@ while barrier_call < 5:
                                   ball_positions,
                                   bar)
         cross.append(cross_line)
-        barrier_call += 1
+    barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
@@ -91,6 +91,7 @@ while True:
     robot_info = detect_robot(frame)
         
     staged_balls = []
+    ball_positions = None
     best_staging = None
     best_ball = None
 
