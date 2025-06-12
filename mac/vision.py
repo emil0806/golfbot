@@ -131,72 +131,96 @@ def detect_balls(frame, egg, robot_position, front_marker):
 
     return ball_positions
 
-
 def detect_robot(frame):
-    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l_clahe = clahe.apply(l)
-    lab_clahe = cv2.merge((l_clahe, a, b))
-    frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-    hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (9, 9), 2)
 
-    # Grøn bagende
-    lower_green = np.array([55,  50,  60])
-    upper_green = np.array([85, 255, 200])
+    front_marker = None
+    back_marker = None  
+
+    # Grøn front marker – tilpasset lav saturation og V:
+    lower_green = np.array([42, 40, 175])   # lidt under dine laveste værdier
+    upper_green = np.array([56, 90, 255])   # lidt over dine højeste værdier
+
+    # New back marker (H: 161–165, S: 100+, V: 200+)
+    lower_back = np.array([160, 90, 190])
+    upper_back = np.array([166, 255, 255])
+
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
+    mask_back = cv2.inRange(hsv, lower_back, upper_back)
 
-    # Orange front
-    lower_orange = np.array([10, 150, 90])
-    upper_orange = np.array([30, 255, 255])
-    mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
 
-    kernel = np.ones((3, 3), np.uint8)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
-    mask_orange = cv2.morphologyEx(mask_orange, cv2.MORPH_OPEN, kernel)
-    mask_orange = cv2.morphologyEx(mask_orange, cv2.MORPH_CLOSE, kernel)
+    def find_largest_circle(mask, label, color):
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return None
+        cnt = max(contours, key=cv2.contourArea)
+        (x, y), radius = cv2.minEnclosingCircle(cnt)
+        if radius > 20:
+            center = (int(x), int(y))
+            cv2.circle(frame, center, int(radius), color, 2)
+            cv2.putText(frame, label, (center[0] - 20, center[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            return center
+        return None
+
+    front_marker = find_largest_circle(mask_green, "Front", (0, 255, 0))
+    back_marker = find_largest_circle(mask_back, "Back", (0, 0, 255))
+
+    # --- Fallback: HoughCircles if markers not found ---
+    if front_marker is None or back_marker is None:
+        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
+                                   param1=100, param2=25, minRadius=10, maxRadius=40)
+
+        if circles is not None and (front_marker is None or back_marker is None):
+            biggest = sorted(circles[0, :], key=lambda c: c[2], reverse=True)[:2]
+            candidates = []
+            
+            for (x, y, r) in biggest:
+                x, y, r = int(x), int(y), int(r)
+                roi = hsv[max(y - r, 0):min(y + r, hsv.shape[0]),
+                        max(x - r, 0):min(x + r, hsv.shape[1])]
+                if roi.size == 0:
+                    continue
+                avg_h, avg_s, avg_v = np.mean(roi, axis=(0, 1))
+                candidates.append(((x, y), r, avg_h, avg_s, avg_v))
+
+            for (center, r, h, s, v) in candidates:
+                if front_marker is None and 50 <= h <= 70 and 25 <= s <= 100 and 150 <= v <= 190:
+                    front_marker = center
+                    cv2.circle(frame, center, r, (0, 255, 0), 2)
+                    cv2.putText(frame, "Front", (center[0]-20, center[1]-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                elif back_marker is None and 160 <= h <= 166 and s > 90 and v > 190:
+                    back_marker = center
+                    cv2.circle(frame, center, r, (255, 0, 255), 2)
+                    cv2.putText(frame, "Back", (center[0]-20, center[1]-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+
+            # If HSV check fails, assign based on position (e.g. left vs. right or top vs. bottom)
+            if len(candidates) == 2 and (front_marker is None or back_marker is None):
+                (c1, r1, _, _, _), (c2, r2, _, _, _) = candidates
+                # For example: assume the marker with lower y is front
+                if c1[1] < c2[1]:
+                    front_marker = front_marker or c1
+                    back_marker = back_marker or c2
+                else:
+                    front_marker = front_marker or c2
+                    back_marker = back_marker or c1
+
+
+    # --- Return result if both are found ---
+    if front_marker and back_marker:
+        cv2.arrowedLine(frame, back_marker, front_marker, (255, 255, 255), 2)
+        direction_vector = (front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
+        cv2.imshow("Robot Debug", frame)
+        return (back_marker, front_marker, direction_vector)
 
     cv2.imshow("Green Mask", mask_green)
-    cv2.imshow("Orange Mask (Robot Front)", mask_orange)
 
-    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_orange, _ = cv2.findContours(mask_orange, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if contours_green is None or len(contours_green) == 0:
-        kernel_small = np.ones((3, 3), np.uint8)
-        mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel_small)
-        mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel_small)
-        contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    robot_position = None
-    front_position = None
-
-    # Find bagende (grøn)
-    if contours_green:
-        largest_green = max(contours_green, key=cv2.contourArea)
-        (x, y), radius = cv2.minEnclosingCircle(largest_green)
-        robot_position = (int(x), int(y))
-
-    # Find forende (orange rektangel)
-    if contours_orange:
-        largest_orange = max(contours_orange, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_orange)
-        front_position = (int(x + w / 2), int(y + h / 2))
-
-    if robot_position and front_position:
-        rx, ry = robot_position
-        fx, fy = front_position
-        direction_vector = (fx - rx, fy - ry)
-        return (robot_position, front_position, direction_vector)
-
-    robot_orientation = None
-    if robot_position and front_position:
-        rx, ry = robot_position
-        fx, fy = front_position
-        direction_vector = (fx - rx, fy - ry)
-        robot_orientation = (robot_position, front_position, direction_vector)
-
-    return robot_orientation
+    cv2.imshow("Robot Debug", frame)
+    return None
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):

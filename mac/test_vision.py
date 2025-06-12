@@ -92,6 +92,7 @@ while True:
     robot_info = detect_robot(frame)
         
     staged_balls = []
+    ball_positions = None
     best_staging = None
     best_ball = None
     ball_positions = None
