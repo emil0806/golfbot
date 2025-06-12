@@ -6,7 +6,7 @@ from pathfinding import (determine_direction, find_best_ball, sort_balls_by_dist
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point)
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
 import time
 
@@ -63,6 +63,7 @@ while barrier_call < 5:
         robot_position, front_marker, direction = robot_info
 
         bar = detect_barriers(frame, robot_position, ball_positions)
+        bar = filter_barriers_inside_field(bar, frame.shape)
         barriers.append(bar)
         cross.append(
             detect_cross(frame,
@@ -334,8 +335,8 @@ while True:
         # Tegn staging-punkter (lilla)
         if (staged_balls):
             for (x, y, r, o) in staged_balls:
-                cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-                cv2.putText(frame, "Staging", (x - 25, y - 10),
+                cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
+                cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
         # Tegn æg (gul)
@@ -349,7 +350,7 @@ while True:
             for (x1, y1, x2, y2) in cross:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                cv2.putText(frame, "Barrier", (cx - 15, cy - 10),
+                cv2.putText(frame, "Cross", (cx - 15, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
         if (barriers):
