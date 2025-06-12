@@ -3,7 +3,7 @@ import numpy as np
 
 egg_location = []
 
-def detect_balls(frame, egg, robot_position=None, front_marker=None):
+def detect_balls(frame, egg, robot_position, front_marker):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -75,11 +75,10 @@ def detect_balls(frame, egg, robot_position=None, front_marker=None):
                 is_inside_robot = False
                 if robot_position and front_marker:
                     # Brug midtpunkt mellem bagende og front
-                    rx, ry = robot_position
-                    fx, fy = front_marker
-                    mid_x = (rx + fx) // 2
-                    mid_y = (ry + fy) // 2
-                    is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((mid_x, mid_y))) < 100
+                    dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+                    dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                    is_inside_robot = dist_to_back < 80 or dist_to_front < 80
+
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
@@ -120,8 +119,9 @@ def detect_balls(frame, egg, robot_position=None, front_marker=None):
             is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             is_inside_robot = False
             if robot_position:
-                rx, ry = robot_position
-                is_inside_robot = np.linalg.norm(np.array((x, y)) - np.array((rx, ry))) < 25
+                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+                dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                is_inside_robot = dist_to_back < 80 or dist_to_front < 80
 
             if not is_inside_egg and not is_inside_robot:
                 if is_white:
