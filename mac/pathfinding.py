@@ -317,3 +317,62 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
     if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
         return True
     return False
+
+def determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    fx, fy = front_marker
+    mid_x = (FIELD_X_MIN + FIELD_X_MAX) / 2
+    mid_y = (FIELD_Y_MIN + FIELD_Y_MAX) / 2
+
+    if fx < mid_x and fy < mid_y:
+        return 1
+    elif fx >= mid_x and fy < mid_y:
+        return 2
+    elif fx < mid_x and fy >= mid_y:
+        return 3
+    elif fx >= mid_x and fy >= mid_y:
+        return 4
+    else:
+        return 5  # fallback hvis noget går galt
+
+def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    bx, by = best_ball[:2]
+    mid_x = (FIELD_X_MIN + FIELD_X_MAX) / 2
+    mid_y = (FIELD_Y_MIN + FIELD_Y_MAX) / 2
+
+    if bx < mid_x and by < mid_y:
+        return 1
+    elif bx >= mid_x and by < mid_y:
+        return 2
+    elif bx < mid_x and by >= mid_y:
+        return 3
+    elif bx >= mid_x and by >= mid_y:
+        return 4
+    else:
+        return 5  # fallback
+
+    
+def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    x_25 = (FIELD_X_MAX - FIELD_X_MIN) / 4
+    x_50 = (FIELD_X_MAX - FIELD_X_MIN) / 2
+    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) / 4) * 3
+    y_25 = (FIELD_Y_MAX - FIELD_Y_MIN) / 4
+    y_50 = (FIELD_Y_MAX - FIELD_Y_MIN) / 2
+    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) / 4) * 3
+
+    robot_quadrant = determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    ball_quadrant = determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    if(robot_quadrant == ball_quadrant):
+        return front_marker
+    elif((robot_quadrant == 1 and ball_quadrant == 2) or (robot_quadrant == 2 and ball_quadrant == 1)):
+        return (x_50, y_25)
+    elif((robot_quadrant == 1 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 1)):
+        return (x_25, y_50)
+    elif((robot_quadrant == 1 and ball_quadrant == 4)or (robot_quadrant == 4 and ball_quadrant == 1)):
+        return (x_75, y_25)
+    elif((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
+        return (x_75, y_75)
+    elif((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
+        return (x_75, y_50)
+    elif((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
+        return (x_50, y_75)

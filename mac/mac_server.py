@@ -4,7 +4,7 @@ import cv2
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from config import EV3_IP, PORT
@@ -77,6 +77,7 @@ if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
         flat_barriers)
+    
     barriers = flat_barriers
 
     # ----------  BEREGN HOMOGRAFI  ---------------
@@ -276,23 +277,18 @@ while True:
                     np.array(best_ball[:2]) - np.array(front_marker))
 
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
-                    cross_centers = [(x1 + x2) // 2 for (x1, y1, x2, y2) in cross]
-                    median_cross_y = np.median([(y1 + y2) // 2 for (x1, y1, x2, y2) in cross]) if cross else 500
-
-                    if robot_position[1] < median_cross_y:
-                        staging_y = int(median_cross_y) - 120
-                    else:
-                        staging_y = int(median_cross_y) + 120
-
-                    staging_x = best_ball[0]
-                    staging = (staging_x, staging_y, best_ball[2], best_ball[3])
-                    best_ball = staging
+                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                    x, y = point_for_staging
+                    # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                    staging = (x, y, best_ball[2], best_ball[3])
+                    best_ball = staging  # brug stagingpunkt som mål
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
                 elif (has_staging and dist_to_ball > 50):
-                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
-                    best_ball = staging
+                    staging = (best_ball[0], robot_position[1],
+                               best_ball[2], best_ball[3])
+                    best_ball = staging  # brug stagingpunkt som mål
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
