@@ -140,12 +140,12 @@ def detect_robot(frame):
     back_marker = None  
 
     # Grøn front marker – tilpasset lav saturation og V:
-    lower_green = np.array([30, 40, 100])   # lidt under dine laveste værdier
-    upper_green = np.array([100, 100, 255])   # lidt over dine højeste værdier
+    lower_green = np.array([30, 40, 100])
+    upper_green = np.array([100, 100, 255])  # lidt over dine højeste værdier
 
     # New back marker (H: 161–165, S: 100+, V: 200+)
-    lower_back = np.array([120, 90, 150])
-    upper_back = np.array([180, 255, 255])
+    lower_back = np.array([140, 50, 150])
+    upper_back = np.array([170, 255, 255])
 
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_back = cv2.inRange(hsv, lower_back, upper_back)

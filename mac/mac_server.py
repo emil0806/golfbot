@@ -36,6 +36,8 @@ delivery_stage = 0
 last_delivery_count = 11
 prev_ball_count = 11
 
+corner_stage = 0
+
 barriers = []
 cross = []
 
@@ -300,6 +302,18 @@ while True:
                     has_staging = False
                     staged_ball = None
 
+            # --- START corner-pickup hvis kun hjørnebolde ---
+            field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+            corner_balls = [b for b in ball_positions if is_corner_ball(b, field_bounds)]
+
+            if (len(ball_positions) == len(corner_balls)
+                    and corner_balls
+                    and delivery_stage == 0
+                    and corner_stage == 0):
+                print("Corner balls only – initiating corner-pickup")
+                current_corner = corner_balls[0]
+                corner_stage = 1
+
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
@@ -308,6 +322,65 @@ while True:
                 conn.sendall(movement_command.encode())
                 time.sleep(1)
                 last_command = "backward"
+
+            # --- CORNER PICKUP STATE MACHINE ---
+            if corner_stage > 0 and current_corner:
+                cx, cy, cr, _ = current_corner
+                if cy < (FIELD_Y_MIN + FIELD_Y_MAX)/2:
+                    staging = (cx, cy - 180, cr, 0)
+                else:
+                    staging = (cx, cy + 180, cr, 0)
+
+                if corner_stage == 1:
+                    # Naviger til staging
+                    movement_command = determine_direction(robot_info, staging)
+                    if np.hypot(fx - staging[0], fy - staging[1]) < 100:
+                        conn.sendall(b"delivery")  # åbner kløer
+                        last_command = "delivery"
+                        corner_stage = 2
+                    elif movement_command != last_command:
+                        conn.sendall(movement_command.encode())
+                        last_command = movement_command
+
+                elif corner_stage == 2:
+                    # Roter korrekt mod bolden (ligesom i delivery_stage 2)
+                    robot_vector = np.array(robot_position) - np.array(front_marker)
+                    desired_vector = np.array([cx, cy]) - np.array(robot_position)
+
+                    dot = np.dot(robot_vector, desired_vector)
+                    mag_r = np.linalg.norm(robot_vector)
+                    mag_d = np.linalg.norm(desired_vector)
+                    cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
+                    angle_diff = np.degrees(np.arccos(cos_theta))
+
+                    print(f"[Corner Stage 2] Angle to target: {angle_diff:.2f}")
+
+                    if angle_diff > 1.5:
+                        robot_3d = np.append(robot_vector, 0)
+                        desired_3d = np.append(desired_vector, 0)
+                        cross_product = np.cross(robot_3d, desired_3d)[2]
+                        if angle_diff > 15:
+                            movement_command = "left"
+                        else:
+                            movement_command = "slow_left"
+                        if movement_command != last_command:
+                            conn.sendall(movement_command.encode())
+                            last_command = movement_command
+                    else:
+                        corner_stage = 3
+
+                elif corner_stage == 3:
+                    # Bak langsomt ind til bolden
+                    if np.hypot(fx - cx, fy - cy) < 60:
+                        conn.sendall(b"continue")  # luk kløer
+                        last_command = "continue"
+                        corner_stage = 0
+                        last_delivery_count -= 1
+                        ball_positions = [b for b in ball_positions if b != current_corner]
+                        current_corner = None
+                    elif last_command != "slow_backward":
+                        conn.sendall(b"slow_backward")
+                        last_command = "slow_backward"
 
             movement_command = determine_direction(robot_info, best_ball)
 
