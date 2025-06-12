@@ -6,8 +6,8 @@ import numpy as np, cv2
 # =============== 3-D KORREKTION ====================
 # Kamera & bane data  (mm)  – ret kun disse tal hvis noget ændrer sig
 FIELD_W, FIELD_H        = 1800.0, 1200.0
-CAMERA_HEIGHT           = 1500.0       # højde over gulv
-ROBOT_MARKER_HEIGHT     = 150.0        # højde over gulv
+CAMERA_HEIGHT           = 1480.0       # højde over gulv
+ROBOT_MARKER_HEIGHT     = 140.0        # højde over gulv
 
 # Faktor < 1  (≈ 0.9)  flytter markøren ind mod nadir,
 # så vi får dens projektion ned på gulvplanet.
