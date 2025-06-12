@@ -4,7 +4,7 @@ tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
 delivery = MediumMotor(OUTPUT_C)
 
-collector.on(SpeedPercent(30))
+collector.on(SpeedPercent(50))
 
 
 def move_robot(direction):
@@ -64,11 +64,11 @@ def move_robot(direction):
         tank_drive.on(SpeedPercent(15), SpeedPercent(-15))
 
     elif direction == "fast_forward":
-        print("Moving slowly forward")
-        tank_drive.on(SpeedPercent(50), SpeedPercent(50)) 
+        print("Moving fast forward")
+        tank_drive.on(SpeedPercent(80), SpeedPercent(80)) 
 
     elif direction == "fast_backward":
-            print("Reversing slowly")
+            print("Reversing fast")
             tank_drive.on(SpeedPercent(-30), SpeedPercent(-30))
 
     elif direction == "stop":
