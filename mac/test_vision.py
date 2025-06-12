@@ -29,7 +29,6 @@ while barrier_call < 5:
     if not ret:
         print("Camera error, no frame captured")
         continue
-    
     robot_info = detect_robot(frame)
 
     if robot_info:
@@ -48,7 +47,7 @@ while barrier_call < 5:
                                   ball_positions,
                                   bar)
         cross.append(cross_line)
-        barrier_call += 1
+    barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
@@ -86,6 +85,8 @@ while True:
         print("Error: Could not capture image")
         continue
 
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
+    
     egg = detect_egg(frame)
 
     robot_info = detect_robot(frame)
@@ -93,6 +94,7 @@ while True:
     staged_balls = []
     best_staging = None
     best_ball = None
+    ball_positions = None
 
     if robot_info:
         robot_position, front_marker, direction = robot_info

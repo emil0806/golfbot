@@ -141,17 +141,17 @@ def detect_robot(frame):
     frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
     hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
 
-    # Grøn til bagende
-    lower_green = np.array([50, 120, 120])
-    upper_green = np.array([100, 255, 220])
+    # Grøn bagende
+    lower_green = np.array([55,  50,  60])
+    upper_green = np.array([85, 255, 200])
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
 
-    # Orange til fronten
-    lower_orange = np.array([12, 200, 230])
-    upper_orange = np.array([32, 255, 255])
+    # Orange front
+    lower_orange = np.array([10, 150, 90])
+    upper_orange = np.array([30, 255, 255])
     mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
 
-    kernel = np.ones((7, 7), np.uint8)
+    kernel = np.ones((3, 3), np.uint8)
     mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
     mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
     mask_orange = cv2.morphologyEx(mask_orange, cv2.MORPH_OPEN, kernel)

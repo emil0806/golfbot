@@ -50,6 +50,7 @@ while barrier_call < 5:
         print("Camera error, no frame captured")
         continue
 
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
     if robot_info:
@@ -70,7 +71,7 @@ while barrier_call < 5:
                          ball_positions,
                          bar)
         )
-        barrier_call += 1
+    barrier_call += 1
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
@@ -112,6 +113,7 @@ while True:
     if not ret:
         print("Camera error, no frame captured")
         continue
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
 
     robot_info = detect_robot(frame)
 
@@ -158,10 +160,17 @@ while True:
                 dist_to_staging = np.linalg.norm(
                     np.array((cm_x, cm_y)) - np.array(staging_target))
                 print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
+
                 if dist_to_staging > 50:
                     dummy_target = (*staging_target, 10, (255, 255, 255))
-                    movement_command = determine_direction(
+                    base_command = determine_direction(
                         robot_info, dummy_target)
+                    
+                    if base_command in ["left", "right", "forward"] and dist_to_staging < 120:
+                        if not base_command.startswith("slow"):
+                            movement_command = "slow_" + base_command
+                        else: 
+                            movement_command = base_command
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
                         last_command = movement_command

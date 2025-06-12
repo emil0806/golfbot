@@ -27,6 +27,8 @@ def main():
         if not ret:
             print("Failed to capture frame.")
             break
+        
+        frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
 
         display_frame = frame.copy()
         cv2.imshow("HSV Picker", display_frame)
