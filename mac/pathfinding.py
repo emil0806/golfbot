@@ -1,5 +1,31 @@
 import math
-import numpy as np, cv2              # ← NYT
+import numpy as np, cv2
+
+
+
+# =============== 3-D KORREKTION ====================
+# Kamera & bane data  (mm)  – ret kun disse tal hvis noget ændrer sig
+FIELD_W, FIELD_H        = 1800.0, 1200.0
+CAMERA_HEIGHT           = 1500.0       # højde over gulv
+ROBOT_MARKER_HEIGHT     = 150.0        # højde over gulv
+
+# Faktor < 1  (≈ 0.9)  flytter markøren ind mod nadir,
+# så vi får dens projektion ned på gulvplanet.
+_MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
+
+# Kameraets nadir (lodrette nedkast) antages midt på banen
+_CAMERA_CENTER_WORLD = (FIELD_W / 2.0, FIELD_H / 2.0)
+
+def _correct_marker(world_pt):
+    """
+    Flyt et markør-punkt (som er 150 mm højere end gulvet)
+    udad langs linjen fra kameraets nadir, så det rammer gulvplanet.
+    """
+    cx, cy = _CAMERA_CENTER_WORLD
+    dx = (world_pt[0] - cx) * _MARKER_SCALE
+    dy = (world_pt[1] - cy) * _MARKER_SCALE
+    return (cx + dx, cy + dy)
+# ==================================================
 
 # ----------------  PIXEL → WORLD  -----------------
 # Homografi-matrixen H sættes én gang fra mac_server.py
@@ -67,11 +93,17 @@ def determine_direction(robot_position, ball_position):
     if not robot_position or not ball_position:
         return "stop"
 
+    # ------- 1. pixel → world (gulvplan) ----------
     bx, by   = pix2world(ball_position[:2])
 
     (rx_p, ry_p), (fx_p, fy_p), _ = robot_position
-    rx, ry   = pix2world((rx_p, ry_p))
-    fx, fy   = pix2world((fx_p, fy_p))
+    rx_w, ry_w = pix2world((rx_p, ry_p))
+    fx_w, fy_w = pix2world((fx_p, fy_p))
+
+    # ------- 2. højde-korrektion -------------------
+    rx, ry = _correct_marker((rx_w, ry_w))
+    fx, fy = _correct_marker((fx_w, fy_w))
+    # -----------------------------------------------
 
     vector_to_ball = (bx - rx, by - ry)
     vector_front = (fx - rx, fy - ry)   
@@ -96,7 +128,7 @@ def determine_direction(robot_position, ball_position):
             return "slow_right"
     else:
         if angle_difference > 25:
-            return "fast_right"
+            return "fast_left"
         elif angle_difference > 15:
             return "left"
         else:
