@@ -140,12 +140,12 @@ def detect_robot(frame):
     back_marker = None  
 
     # Grøn front marker – tilpasset lav saturation og V:
-    lower_green = np.array([42, 40, 175])   # lidt under dine laveste værdier
-    upper_green = np.array([56, 90, 255])   # lidt over dine højeste værdier
+    lower_green = np.array([30, 40, 100])   # lidt under dine laveste værdier
+    upper_green = np.array([100, 100, 255])   # lidt over dine højeste værdier
 
     # New back marker (H: 161–165, S: 100+, V: 200+)
-    lower_back = np.array([160, 90, 190])
-    upper_back = np.array([166, 255, 255])
+    lower_back = np.array([120, 90, 150])
+    upper_back = np.array([180, 255, 255])
 
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_back = cv2.inRange(hsv, lower_back, upper_back)
@@ -171,7 +171,7 @@ def detect_robot(frame):
     # --- Fallback: HoughCircles if markers not found ---
     if front_marker is None or back_marker is None:
         circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
-                                   param1=100, param2=25, minRadius=10, maxRadius=40)
+                                   param1=100, param2=25, minRadius=20, maxRadius=100)
 
         if circles is not None and (front_marker is None or back_marker is None):
             biggest = sorted(circles[0, :], key=lambda c: c[2], reverse=True)[:2]
@@ -187,12 +187,12 @@ def detect_robot(frame):
                 candidates.append(((x, y), r, avg_h, avg_s, avg_v))
 
             for (center, r, h, s, v) in candidates:
-                if front_marker is None and 50 <= h <= 70 and 25 <= s <= 100 and 150 <= v <= 190:
+                if front_marker is None and 20 <= h <= 80 and 25 <= s <= 100 and 150 <= v <= 255:
                     front_marker = center
                     cv2.circle(frame, center, r, (0, 255, 0), 2)
                     cv2.putText(frame, "Front", (center[0]-20, center[1]-10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                elif back_marker is None and 160 <= h <= 166 and s > 90 and v > 190:
+                elif back_marker is None and 120 <= h <= 190 and s > 70 and v > 160:
                     back_marker = center
                     cv2.circle(frame, center, r, (255, 0, 255), 2)
                     cv2.putText(frame, "Back", (center[0]-20, center[1]-10),

@@ -160,17 +160,10 @@ while True:
                 dist_to_staging = np.linalg.norm(
                     np.array((cm_x, cm_y)) - np.array(staging_target))
                 print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
-
-                if dist_to_staging > 50:
+                if dist_to_staging > 100:
                     dummy_target = (*staging_target, 10, (255, 255, 255))
-                    base_command = determine_direction(
+                    movement_command = determine_direction(
                         robot_info, dummy_target)
-                    
-                    if base_command in ["left", "right", "forward"] and dist_to_staging < 120:
-                        if not base_command.startswith("slow"):
-                            movement_command = "slow_" + base_command
-                        else: 
-                            movement_command = base_command
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
                         last_command = movement_command
@@ -252,6 +245,7 @@ while True:
                 else:
                     staging = None
 
+                # ----------- Æg-undvigelse -----------
                 if staging:
                     # Check afstand og vinkel til staging
                     staging_dist = np.linalg.norm(
@@ -277,29 +271,34 @@ while True:
                     if not at_staging:
                         # Erstat best_ball med staging
                         staged_balls.append(staging)
-                        best_ball = staging  
+                        best_ball = staging  # overskriv best_ball med staging-punktet
 
                     dist_to_staged_ball = 0 if staging is None else np.linalg.norm(
                         np.array(staging[:2]) - np.array(robot_position))
 
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
-                    cross_centers = [(x1 + x2) // 2 for (x1, y1, x2, y2) in cross]
-                    median_cross_y = np.median([(y1 + y2) // 2 for (x1, y1, x2, y2) in cross]) if cross else 500
-
-                    if robot_position[1] < median_cross_y:
-                        staging_y = int(median_cross_y) - 120
+                    y = 0
+                    x = 0
+                    if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
+                        if (robot_position[1] <= 550):
+                            y = 200
+                            x = 950
+                        else:
+                            y = 800
+                            x = 950
                     else:
-                        staging_y = int(median_cross_y) + 120
-
-                    staging_x = best_ball[0]
-                    staging = (staging_x, staging_y, best_ball[2], best_ball[3])
-                    best_ball = staging
+                        y = robot_position[1]
+                        x = best_ball[0]
+                    # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                    staging = (x, y, best_ball[2], best_ball[3])
+                    best_ball = staging  # brug stagingpunkt som mål
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
                 elif (has_staging and dist_to_staged_ball > 50):
-                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
-                    best_ball = staging
+                    staging = (best_ball[0], robot_position[1],
+                               best_ball[2], best_ball[3])
+                    best_ball = staging  # brug stagingpunkt som mål
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
