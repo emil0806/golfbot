@@ -2,27 +2,23 @@ import cv2
 import numpy as np
 import time
 
-# 2 uafhængige filtre (ét til hver markør)
-front_kf = cv2.KalmanFilter(4, 2)   #  (x,y,vx,vy)
-back_kf  = cv2.KalmanFilter(4, 2)
-
-def _init_kf(kf):
-    kf.measurementMatrix = np.array([[1,0,0,0],
-                                     [0,1,0,0]], np.float32)
+# 2D pos + (meget simpel) hastigheds-model  [x, y, vx, vy]^T
+def _make_kf():
+    kf = cv2.KalmanFilter(4, 2)
     kf.transitionMatrix  = np.array([[1,0,1,0],
                                      [0,1,0,1],
                                      [0,0,1,0],
                                      [0,0,0,1]], np.float32)
-    kf.processNoiseCov    = np.eye(4, dtype=np.float32) * 1e-2
-    kf.measurementNoiseCov= np.eye(2, dtype=np.float32) * 5
+    kf.measurementMatrix = np.eye(2,4, dtype=np.float32)
+    kf.processNoiseCov   = np.eye(4, dtype=np.float32)*1e-2
+    kf.measurementNoiseCov = np.eye(2, dtype=np.float32)*1e-1
+    kf.errorCovPost      = np.eye(4, dtype=np.float32)
+    return kf
 
-_init_kf(front_kf)
-_init_kf(back_kf)
-
-last_front = None       # seneste “rigtige” målinger
-last_back  = None
-last_seen  = 0.0        # tid (s) hvor begge var synlige sidst
-MAX_MISS   = 1.0        # sekunder vi vil “holde fast” i forrige detektion
+front_kf, back_kf = _make_kf(), _make_kf()
+last_front = last_back = None
+last_seen  = time.time()
+MAX_MISS   = 0.7       # sek. begge markører må mangle
 
 
 egg_location = []
@@ -156,77 +152,95 @@ def detect_balls(frame, egg, robot_position, front_marker):
     return ball_positions
 
 def detect_robot(frame):
-    global last_front, last_back, last_seen       # <- vigtige!
+    global last_front, last_back, last_seen
 
     # ---------- (1) preprocessing ----------
-    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    lab  = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l,a,b = cv2.split(lab); l = cv2.createCLAHE(2,(8,8)).apply(l)
     frame_clahe = cv2.cvtColor(cv2.merge((l,a,b)), cv2.COLOR_LAB2BGR)
-    hsv  = cv2.cvtColor(cv2.bilateralFilter(frame_clahe,9,75,75), cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # blød rumlig udglatning → mindre støj / skarpere kanter i HSV
+    hsv   = cv2.cvtColor(cv2.bilateralFilter(frame_clahe,9,75,75), cv2.COLOR_BGR2HSV)
+    gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray,(9,9),2)
 
-    # ---------- (2) masker ----------
-    mask_green = cv2.inRange(hsv,(79,24,16),(100,171,200)) | \
-                 cv2.inRange(hsv,(79,10,10),(100,180,120))
-    mask_back  = cv2.inRange(hsv,(155,100,120),(165,255,255)) | \
-                 cv2.inRange(hsv,(160,180,60 ),(170,255,150))
+    # ---------- (2) HSV-masker ----------
+    mask_front = (
+        cv2.inRange(hsv, ( 79,  24,  16), (100,171,200)) |   # range 1
+        cv2.inRange(hsv, ( 79,  10,  10), (100,180,120))     # range 2
+    )
+    mask_back = (
+        cv2.inRange(hsv, (155,100,120), (165,255,255)) |     # range 1
+        cv2.inRange(hsv, (160,180, 60), (170,255,150))       # range 2
+    )
 
-    def largest(mask,label,col):
-        cnts,_=cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    # ---------- (3) kontur-baseret søgning ----------
+    def largest_circle(mask,label,col):
+        cnts,_ = cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
         if not cnts: return None
         (x,y),R = cv2.minEnclosingCircle(max(cnts,key=cv2.contourArea))
-        if 20 < R < 40:
+        if 20 < R < 40:                                       # radius-gate
             cv2.circle(frame,(int(x),int(y)),int(R),col,2)
             cv2.putText(frame,label,(int(x)-20,int(y)-10),cv2.FONT_HERSHEY_SIMPLEX,0.5,col,2)
             return (int(x),int(y))
         return None
 
-    front_marker = largest(mask_green,"Front",(0,255,0))
-    back_marker  = largest(mask_back ,"Back" ,(0,0,255))
+    front = largest_circle(mask_front,"Front",(0,255,0))
+    back  = largest_circle(mask_back ,"Back" ,(0,0,255))
 
-    # ---------- (3) Hough fallback ----------
-    if front_marker is None or back_marker is None:
+    # ---------- (4) HoughCircles-fallback med ROI-HSV-check ----------
+    if front is None or back is None:
         circles = cv2.HoughCircles(blurred,cv2.HOUGH_GRADIENT,1.2,30,
                                    param1=100,param2=25,minRadius=30,maxRadius=60)
         if circles is not None:
             for (x,y,R) in np.round(circles[0]).astype(int):
-                h,s,v = hsv[y,x]
-                if front_marker is None and 79<=h<=100 and s>25: front_marker=(x,y)
-                if back_marker  is None and 155<=h<=165 and s>100: back_marker =(x,y)
+                # gennemsnitlig HSV i cirkel-ROI
+                roi = hsv[max(y-R,0):y+R, max(x-R,0):x+R]
+                if roi.size == 0: continue
+                h,s,v = np.mean(roi.reshape(-1,3), axis=0)
 
-    # ---------- (4) Kalman opdater / predict ----------
-    front = front_marker
-    back  = back_marker
-    t = time.time()
+                if front is None and 79 <= h <= 100 and 25 <= s <= 180:
+                    front = (x,y)
+                elif back is None  and 155<= h <= 170 and s >=100:
+                    back  = (x,y)
 
-    if front: front_kf.correct(np.array([[np.float32(front[0])],[np.float32(front[1])]])); last_front=front
-    pred_f = front_kf.predict();  front = front or (int(pred_f[0]),int(pred_f[1]))
+    # ---------- (5) Kalman → predict & correct ----------
+    t_now = time.time()
 
-    if back:  back_kf.correct (np.array([[np.float32(back[0]) ],[np.float32(back[1]) ] ])); last_back =back
-    pred_b = back_kf.predict();   back  = back  or (int(pred_b[0]) ,int(pred_b[1]))
+    def _step(kf, meas, last):
+        if meas is not None:
+            kf.correct(np.float32([[meas[0]],[meas[1]]]))
+            last = meas
+        pred = kf.predict()
+        return (int(pred[0]),int(pred[1])) if meas is None else meas, last
 
-    # ---------- (5) afstand & timeout ----------
+    front, last_front = _step(front_kf, front, last_front)
+    back , last_back  = _step(back_kf , back , last_back)
+
+    # ---------- (6) sanity-check & timeout ----------
     if front and back:
-        dist = np.linalg.norm(np.subtract(front,back))
-        if 100 <= dist <= 150:
-            last_seen = t
-        else:
-            front=back=None
+        d = np.linalg.norm(np.subtract(front,back))
+        if 100 <= d <= 150:           # gyldig afstand
+            last_seen = t_now
+        else:                         # åbenlys fejl
+            front = back = None
 
-    if front is None and back is None and (t-last_seen)>MAX_MISS:
+    # drop helt hvis begge mangler for længe
+    if front is None and back is None and (t_now-last_seen) > MAX_MISS:
         return None
 
+    # brug sidste kendte hvis kun én mangler
     front = front or last_front
     back  = back  or last_back
     if front is None or back is None:
         return None
 
-    # ---------- (6) tegn & returnér ----------
-    cv2.arrowedLine(frame, back, front, (255,255,255),2)
-    v = (front[0]-back[0], front[1]-back[1])
+    # ---------- (7) tegn & return ----------
+    cv2.arrowedLine(frame, back, front, (255,255,255), 2)
     cv2.imshow("Robot Debug", frame)
-    return back, front, v
+    cv2.imshow("Green Mask", mask_front)          # hurtig fin-tuning
+    direction_vec = (front[0]-back[0], front[1]-back[1])
+    return back, front, direction_vec
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
