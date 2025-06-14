@@ -132,7 +132,13 @@ def detect_balls(frame, egg, robot_position, front_marker):
     return ball_positions
 
 def detect_robot(frame):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l_clahe = clahe.apply(l)
+    lab_clahe = cv2.merge((l_clahe, a, b))
+    frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
+    hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 2)
 
@@ -140,15 +146,26 @@ def detect_robot(frame):
     back_marker = None  
 
     # Grøn front marker – tilpasset lav saturation og V:
-    lower_green = np.array([30, 40, 100])
-    upper_green = np.array([100, 100, 255])  # lidt over dine højeste værdier
+    lower_front1 = np.array([79, 24, 16])
+    upper_front1 = np.array([87, 171, 200])
+    
+    lower_front2 = np.array([87, 24, 16])
+    upper_front2 = np.array([97, 171, 200])
+
+    mask1 = cv2.inRange(hsv, lower_front1, upper_front1)
+    mask2 = cv2.inRange(hsv, lower_front2, upper_front2)
+    mask_green = cv2.bitwise_or(mask1, mask2)
 
     # New back marker (H: 161–165, S: 100+, V: 200+)
-    lower_back = np.array([140, 50, 150])
-    upper_back = np.array([170, 255, 255])
+    lower_back1 = np.array([155, 80, 60])
+    upper_back1 = np.array([162, 210, 180])
 
-    mask_green = cv2.inRange(hsv, lower_green, upper_green)
-    mask_back = cv2.inRange(hsv, lower_back, upper_back)
+    lower_back2 = np.array([160, 180, 60])
+    upper_back2 = np.array([170, 255, 150])
+
+    mask_back1 = cv2.inRange(hsv, lower_back1, upper_back1)
+    mask_back2 = cv2.inRange(hsv, lower_back2, upper_back2)
+    mask_back = cv2.bitwise_or(mask_back1, mask_back2)
 
 
     def find_largest_circle(mask, label, color):
@@ -315,33 +332,33 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
     cross_lines = []
 
+    if lines is not None:            #TILFØJET FOR AT KØRE KAMERA HJEMME !!!DAVID!!!
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
 
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
-        cx = (x1 + x2) // 2
-        cy = (y1 + y2) // 2
+            too_close_to_robot = False
+            too_close_to_ball = False
 
-        too_close_to_robot = False
-        too_close_to_ball = False
+            if robot_position:
+                rx, ry = robot_position
+                if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 100:
+                    too_close_to_robot = True
 
-        if robot_position:
-            rx, ry = robot_position
-            if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 100:
-                too_close_to_robot = True
+            if front_marker:
+                fx, fy = front_marker
+                if np.linalg.norm(np.array((cx, cy)) - np.array((fx, fy))) < 100:
+                    too_close_to_robot = True
 
-        if front_marker:
-            fx, fy = front_marker
-            if np.linalg.norm(np.array((cx, cy)) - np.array((fx, fy))) < 100:
-                too_close_to_robot = True
+            if ball_positions:
+                for (bx, by, _, _) in ball_positions:
+                    if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
+                        too_close_to_ball = True
+                        break
 
-        if ball_positions:
-            for (bx, by, _, _) in ball_positions:
-                if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
-                    too_close_to_ball = True
-                    break
-
-        if not too_close_to_robot and not too_close_to_ball:
-            cross_lines.append((x1, y1, x2, y2))
+            if not too_close_to_robot and not too_close_to_ball:
+                cross_lines.append((x1, y1, x2, y2))
 
     if barriers:
         filtered = []
@@ -390,10 +407,14 @@ def detect_egg(frame):
 
 def inside_field(barriers):
     xs, ys = [], []
-    for (x1, y1, x2, y2), _ in barriers:
+    for ((x1, y1, x2, y2), _) in barriers:
         xs.extend([x1, x2])
         ys.extend([y1, y2])
+
+    if not xs or not ys:                                              #TILFØJET FOR AT KØRE KAMERA HJEMME !!!DAVID!!!
+        print("⚠️ Advarsel: Ingen barriers fundet – bruger fallback") #TILFØJET FOR AT KØRE KAMERA HJEMME !!!DAVID!!!
+        return 0, 1280, 0, 720                                        #TILFØJET FOR AT KØRE KAMERA HJEMME !!!DAVID!!!
+
     FIELD_X_MIN, FIELD_X_MAX = min(xs), max(xs)
     FIELD_Y_MIN, FIELD_Y_MAX = min(ys), max(ys)
-
-    return (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    return FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX
