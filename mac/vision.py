@@ -1,5 +1,29 @@
 import cv2
 import numpy as np
+import time
+
+# 2 uafhængige filtre (ét til hver markør)
+front_kf = cv2.KalmanFilter(4, 2)   #  (x,y,vx,vy)
+back_kf  = cv2.KalmanFilter(4, 2)
+
+def _init_kf(kf):
+    kf.measurementMatrix = np.array([[1,0,0,0],
+                                     [0,1,0,0]], np.float32)
+    kf.transitionMatrix  = np.array([[1,0,1,0],
+                                     [0,1,0,1],
+                                     [0,0,1,0],
+                                     [0,0,0,1]], np.float32)
+    kf.processNoiseCov    = np.eye(4, dtype=np.float32) * 1e-2
+    kf.measurementNoiseCov= np.eye(2, dtype=np.float32) * 5
+
+_init_kf(front_kf)
+_init_kf(back_kf)
+
+last_front = None       # seneste “rigtige” målinger
+last_back  = None
+last_seen  = 0.0        # tid (s) hvor begge var synlige sidst
+MAX_MISS   = 1.0        # sekunder vi vil “holde fast” i forrige detektion
+
 
 egg_location = []
 
@@ -132,122 +156,77 @@ def detect_balls(frame, egg, robot_position, front_marker):
     return ball_positions
 
 def detect_robot(frame):
+    global last_front, last_back, last_seen       # <- vigtige!
+
+    # ---------- (1) preprocessing ----------
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l_clahe = clahe.apply(l)
-    lab_clahe = cv2.merge((l_clahe, a, b))
-    frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-    filtered = cv2.bilateralFilter(frame_clahe, 9, 75, 75)
-    hsv = cv2.cvtColor(filtered, cv2.COLOR_BGR2HSV)
-    #hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
+    l,a,b = cv2.split(lab); l = cv2.createCLAHE(2,(8,8)).apply(l)
+    frame_clahe = cv2.cvtColor(cv2.merge((l,a,b)), cv2.COLOR_LAB2BGR)
+    hsv  = cv2.cvtColor(cv2.bilateralFilter(frame_clahe,9,75,75), cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+    blurred = cv2.GaussianBlur(gray,(9,9),2)
 
-    front_marker = None
-    back_marker = None  
+    # ---------- (2) masker ----------
+    mask_green = cv2.inRange(hsv,(79,24,16),(100,171,200)) | \
+                 cv2.inRange(hsv,(79,10,10),(100,180,120))
+    mask_back  = cv2.inRange(hsv,(155,100,120),(165,255,255)) | \
+                 cv2.inRange(hsv,(160,180,60 ),(170,255,150))
 
-    # Grøn front marker – tilpasset lav saturation og V:
-    lower_front1 = np.array([79, 24, 16])
-    upper_front1 = np.array([87, 171, 200])
-    
-    lower_front2 = np.array([79, 10, 10])
-    upper_front2 = np.array([100, 180
-                             , 120])
-
-    mask1 = cv2.inRange(hsv, lower_front1, upper_front1)
-    mask2 = cv2.inRange(hsv, lower_front2, upper_front2)
-    mask_green = cv2.bitwise_or(mask1, mask2)
-
-    # New back marker (H: 161–165, S: 100+, V: 200+)
-    lower_back1 = np.array([155, 100, 120])
-    upper_back1 = np.array([165, 255, 255])
-
-    lower_back2 = np.array([160, 180, 60])
-    upper_back2 = np.array([170, 255, 150])
-
-    mask_back1 = cv2.inRange(hsv, lower_back1, upper_back1)
-    mask_back2 = cv2.inRange(hsv, lower_back2, upper_back2)
-    mask_back = cv2.bitwise_or(mask_back1, mask_back2)
-
-
-    def find_largest_circle(mask, label, color):
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            return None
-        cnt = max(contours, key=cv2.contourArea)
-        (x, y), radius = cv2.minEnclosingCircle(cnt)
-        if 40 > radius > 20:
-            center = (int(x), int(y))
-            cv2.circle(frame, center, int(radius), color, 2)
-            cv2.putText(frame, label, (center[0] - 20, center[1] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-            return center
+    def largest(mask,label,col):
+        cnts,_=cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts: return None
+        (x,y),R = cv2.minEnclosingCircle(max(cnts,key=cv2.contourArea))
+        if 20 < R < 40:
+            cv2.circle(frame,(int(x),int(y)),int(R),col,2)
+            cv2.putText(frame,label,(int(x)-20,int(y)-10),cv2.FONT_HERSHEY_SIMPLEX,0.5,col,2)
+            return (int(x),int(y))
         return None
 
-    front_marker = find_largest_circle(mask_green, "Front", (0, 255, 0))
-    back_marker = find_largest_circle(mask_back, "Back", (0, 0, 255))
+    front_marker = largest(mask_green,"Front",(0,255,0))
+    back_marker  = largest(mask_back ,"Back" ,(0,0,255))
 
-    # --- Fallback: HoughCircles if markers not found ---
+    # ---------- (3) Hough fallback ----------
     if front_marker is None or back_marker is None:
-        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
-                                   param1=100, param2=25, minRadius=30, maxRadius=60)
+        circles = cv2.HoughCircles(blurred,cv2.HOUGH_GRADIENT,1.2,30,
+                                   param1=100,param2=25,minRadius=30,maxRadius=60)
+        if circles is not None:
+            for (x,y,R) in np.round(circles[0]).astype(int):
+                h,s,v = hsv[y,x]
+                if front_marker is None and 79<=h<=100 and s>25: front_marker=(x,y)
+                if back_marker  is None and 155<=h<=165 and s>100: back_marker =(x,y)
 
-        if circles is not None and (front_marker is None or back_marker is None):
-            biggest = sorted(circles[0, :], key=lambda c: c[2], reverse=True)[:2]
-            candidates = []
-            
-            for (x, y, r) in biggest:
-                x, y, r = int(x), int(y), int(r)
-                roi = hsv[max(y - r, 0):min(y + r, hsv.shape[0]),
-                        max(x - r, 0):min(x + r, hsv.shape[1])]
-                if roi.size == 0:
-                    continue
-                avg_h, avg_s, avg_v = np.mean(roi, axis=(0, 1))
-                candidates.append(((x, y), r, avg_h, avg_s, avg_v))
+    # ---------- (4) Kalman opdater / predict ----------
+    front = front_marker
+    back  = back_marker
+    t = time.time()
 
-            for (center, r, h, s, v) in candidates:
-                if front_marker is None and 20 <= h <= 80 and 25 <= s <= 100 and 150 <= v <= 255:
-                    front_marker = center
-                    cv2.circle(frame, center, r, (0, 255, 0), 2)
-                    cv2.putText(frame, "Front", (center[0]-20, center[1]-10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                elif back_marker is None and 120 <= h <= 190 and s > 70 and v > 160:
-                    back_marker = center
-                    cv2.circle(frame, center, r, (255, 0, 255), 2)
-                    cv2.putText(frame, "Back", (center[0]-20, center[1]-10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+    if front: front_kf.correct(np.array([[np.float32(front[0])],[np.float32(front[1])]])); last_front=front
+    pred_f = front_kf.predict();  front = front or (int(pred_f[0]),int(pred_f[1]))
 
-            # If HSV check fails, assign based on position (e.g. left vs. right or top vs. bottom)
-            if len(candidates) == 2 and (front_marker is None or back_marker is None):
-                (c1, r1, _, _, _), (c2, r2, _, _, _) = candidates
-                # For example: assume the marker with lower y is front
-                if c1[1] < c2[1]:
-                    front_marker = front_marker or c1
-                    back_marker = back_marker or c2
-                else:
-                    front_marker = front_marker or c2
-                    back_marker = back_marker or c1
+    if back:  back_kf.correct (np.array([[np.float32(back[0]) ],[np.float32(back[1]) ] ])); last_back =back
+    pred_b = back_kf.predict();   back  = back  or (int(pred_b[0]) ,int(pred_b[1]))
 
+    # ---------- (5) afstand & timeout ----------
+    if front and back:
+        dist = np.linalg.norm(np.subtract(front,back))
+        if 100 <= dist <= 150:
+            last_seen = t
+        else:
+            front=back=None
 
-    # --- Valider at front og back er langt nok fra hinanden ---
-    if front_marker and back_marker:
-        dist = np.linalg.norm(np.array(front_marker) - np.array(back_marker))
-        if not (100 <= dist <= 150):
-            front_marker = None
-            back_marker = None
+    if front is None and back is None and (t-last_seen)>MAX_MISS:
+        return None
 
-    # --- Return hvis begge er valide efter afstandstjek ---
-    if front_marker and back_marker:
-        cv2.arrowedLine(frame, back_marker, front_marker, (255, 255, 255), 2)
-        direction_vector = (front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
-        cv2.imshow("Robot Debug", frame)
-        return (back_marker, front_marker, direction_vector)
+    front = front or last_front
+    back  = back  or last_back
+    if front is None or back is None:
+        return None
 
-    cv2.imshow("Green Mask", mask_green)
-
+    # ---------- (6) tegn & returnér ----------
+    cv2.arrowedLine(frame, back, front, (255,255,255),2)
+    v = (front[0]-back[0], front[1]-back[1])
     cv2.imshow("Robot Debug", frame)
-    return None
+    return back, front, v
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
