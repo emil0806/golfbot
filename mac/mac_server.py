@@ -52,7 +52,7 @@ while barrier_call < 5:
         print("Camera error, no frame captured")
         continue
 
-    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
     robot_info = detect_robot(frame)
     egg = detect_egg(frame)
     if robot_info:
@@ -115,7 +115,7 @@ while True:
     if not ret:
         print("Camera error, no frame captured")
         continue
-    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
 
     robot_info = detect_robot(frame)
 

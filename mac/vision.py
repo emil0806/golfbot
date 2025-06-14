@@ -138,7 +138,9 @@ def detect_robot(frame):
     l_clahe = clahe.apply(l)
     lab_clahe = cv2.merge((l_clahe, a, b))
     frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-    hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
+    filtered = cv2.bilateralFilter(frame_clahe, 9, 75, 75)
+    hsv = cv2.cvtColor(filtered, cv2.COLOR_BGR2HSV)
+    #hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 2)
 
@@ -149,8 +151,9 @@ def detect_robot(frame):
     lower_front1 = np.array([79, 24, 16])
     upper_front1 = np.array([87, 171, 200])
     
-    lower_front2 = np.array([87, 24, 16])
-    upper_front2 = np.array([97, 171, 200])
+    lower_front2 = np.array([79, 10, 10])
+    upper_front2 = np.array([100, 180
+                             , 120])
 
     mask1 = cv2.inRange(hsv, lower_front1, upper_front1)
     mask2 = cv2.inRange(hsv, lower_front2, upper_front2)
@@ -174,7 +177,7 @@ def detect_robot(frame):
             return None
         cnt = max(contours, key=cv2.contourArea)
         (x, y), radius = cv2.minEnclosingCircle(cnt)
-        if radius > 20:
+        if 40 > radius > 20:
             center = (int(x), int(y))
             cv2.circle(frame, center, int(radius), color, 2)
             cv2.putText(frame, label, (center[0] - 20, center[1] - 10),
@@ -188,7 +191,7 @@ def detect_robot(frame):
     # --- Fallback: HoughCircles if markers not found ---
     if front_marker is None or back_marker is None:
         circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
-                                   param1=100, param2=25, minRadius=20, maxRadius=100)
+                                   param1=100, param2=25, minRadius=30, maxRadius=60)
 
         if circles is not None and (front_marker is None or back_marker is None):
             biggest = sorted(circles[0, :], key=lambda c: c[2], reverse=True)[:2]
@@ -230,8 +233,7 @@ def detect_robot(frame):
     # --- Valider at front og back er langt nok fra hinanden ---
     if front_marker and back_marker:
         dist = np.linalg.norm(np.array(front_marker) - np.array(back_marker))
-        if dist < 100:
-            print(f"Ignoring robot: front/back too close ({dist:.1f}px)")
+        if not (100 <= dist <= 150):
             front_marker = None
             back_marker = None
 
