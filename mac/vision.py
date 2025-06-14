@@ -157,8 +157,8 @@ def detect_robot(frame):
     mask_green = cv2.bitwise_or(mask1, mask2)
 
     # New back marker (H: 161–165, S: 100+, V: 200+)
-    lower_back1 = np.array([155, 80, 60])
-    upper_back1 = np.array([162, 210, 180])
+    lower_back1 = np.array([155, 100, 120])
+    upper_back1 = np.array([165, 255, 255])
 
     lower_back2 = np.array([160, 180, 60])
     upper_back2 = np.array([170, 255, 150])
