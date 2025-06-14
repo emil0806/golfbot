@@ -227,7 +227,15 @@ def detect_robot(frame):
                     back_marker = back_marker or c1
 
 
-    # --- Return result if both are found ---
+    # --- Valider at front og back er langt nok fra hinanden ---
+    if front_marker and back_marker:
+        dist = np.linalg.norm(np.array(front_marker) - np.array(back_marker))
+        if dist < 100:
+            print(f"Ignoring robot: front/back too close ({dist:.1f}px)")
+            front_marker = None
+            back_marker = None
+
+    # --- Return hvis begge er valide efter afstandstjek ---
     if front_marker and back_marker:
         cv2.arrowedLine(frame, back_marker, front_marker, (255, 255, 255), 2)
         direction_vector = (front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
