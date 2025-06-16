@@ -4,7 +4,7 @@ import cv2
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
@@ -43,6 +43,11 @@ FIELD_X_MIN = None
 FIELD_X_MAX = None
 FIELD_Y_MIN = None
 FIELD_Y_MAX = None
+
+CROSS_X_MIN = None
+CROSS_X_MAX = None
+CROSS_Y_MIN = None
+CROSS_Y_MAX = None
 
 while barrier_call < 5:
     ret, frame = cap.read()
@@ -108,6 +113,8 @@ else:
 
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
+    CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
+        flat_cross)
     cross = flat_cross
 
 while True:
@@ -278,18 +285,34 @@ while True:
                     np.array(best_ball[:2]) - np.array(front_marker))
 
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
-                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-                    x, y = point_for_staging
-                    # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                    y = 0
+                    x = 0
+                    in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
+                    if (in_line == 1):
+                        if (front_marker[0] <= (FIELD_X_MAX - FIELD_X_MIN) / 2):
+                            y = (FIELD_Y_MAX - FIELD_Y_MIN) * 0.25
+                            x = (FIELD_X_MAX - FIELD_X_MIN) * 0.50
+                        else:
+                            y = (FIELD_Y_MAX - FIELD_Y_MIN) * 0.75
+                            x = (FIELD_X_MAX - FIELD_X_MIN) * 0.50
+                    elif(in_line == 2):
+                        if (front_marker[0] <= (FIELD_Y_MAX - FIELD_Y_MIN) / 2):
+                            y = (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
+                            x = (FIELD_X_MAX - FIELD_X_MIN) * 0.25
+                        else:
+                            y = (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
+                            x = (FIELD_X_MAX - FIELD_X_MIN) * 0.75
+                    else:
+                        y = front_marker[1]
+                        x = best_ball[0]
                     staging = (x, y, best_ball[2], best_ball[3])
-                    best_ball = staging  # brug stagingpunkt som mål
+                    best_ball = staging  
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True
-                elif (has_staging and dist_to_ball > 50):
-                    staging = (best_ball[0], robot_position[1],
-                               best_ball[2], best_ball[3])
-                    best_ball = staging  # brug stagingpunkt som mål
+                elif(has_staging and dist_to_ball > 50):
+                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
+                    best_ball = staging 
                     staged_balls.append(best_ball)
                     staged_ball = staging
                     has_staging = True

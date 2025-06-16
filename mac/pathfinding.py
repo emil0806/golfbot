@@ -332,7 +332,7 @@ def determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN
     elif fx >= mid_x and fy >= mid_y:
         return 4
     else:
-        return 5  # fallback hvis noget går galt
+        return 5 
 
 def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     bx, by = best_ball[:2]
@@ -348,7 +348,7 @@ def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FI
     elif bx >= mid_x and by >= mid_y:
         return 4
     else:
-        return 5  # fallback
+        return 5 
 
     
 def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
@@ -376,3 +376,22 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
         return (x_75, y_50)
     elif((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
         return (x_50, y_75)
+    
+
+def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+    bx, by = best_ball[:2]
+    if(bx >= CROSS_X_MIN and bx <= CROSS_X_MAX and by >= CROSS_Y_MIN and by <= CROSS_Y_MAX):
+        return True
+    else:
+        return False
+
+def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, margin=100):
+    fx, fy = front_marker
+    bx, by = best_ball[:2]
+
+    if((fx >= CROSS_X_MIN - margin and fx <= CROSS_X_MAX + margin) and (bx >= CROSS_X_MIN - margin and bx <= CROSS_X_MAX + margin)):
+        return 1
+    elif((fy >= CROSS_Y_MIN - margin and fy <= CROSS_Y_MAX + margin) and (by >= CROSS_Y_MIN - margin and by <= CROSS_Y_MAX + margin)):
+        return 2
+    else:
+        return 0
