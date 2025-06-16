@@ -20,7 +20,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
     # Justeret HSV-grænser
     lower_white = np.array([0, 0, 200])
     upper_white = np.array([180, 50, 255])
-    lower_orange = np.array([12, 85, 230])
+    lower_orange = np.array([12, 0, 0])
     upper_orange = np.array([32, 255, 255])
 
     # Masker
@@ -132,7 +132,6 @@ def detect_balls(frame, egg, robot_position, front_marker):
     return ball_positions
 
 def detect_robot(frame):
-    # Forbedret lysstyrke og kontrast
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -140,96 +139,156 @@ def detect_robot(frame):
     lab_clahe = cv2.merge((l_clahe, a, b))
     frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
     hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2GRAY)
 
-    # Marker farver
-    lower_green = np.array([50, 40, 100])
-    upper_green = np.array([70, 140, 255])
-    lower_back = np.array([160, 50, 150])
-    upper_back = np.array([175, 255, 255])
-
-    # Masker og morfologi
     kernel = np.ones((5, 5), np.uint8)
-    mask_green = cv2.inRange(hsv, lower_green, upper_green)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
 
-    mask_back = cv2.inRange(hsv, lower_back, upper_back)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_OPEN, kernel)
-    mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_CLOSE, kernel)
+    color_ranges = {
+        "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([102, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([73, 0, 0]),  "upper": np.array([87, 255, 255])},
+        "back_left":   {"color": (255, 0, 255),    "lower": np.array([153, 0, 0]), "upper": np.array([167, 255, 255])},
+        "back_right":  {"color": (255, 0, 0),      "lower": np.array([118, 0, 0]), "upper": np.array([132, 255, 255])},
+    }
 
-    def find_marker(mask, label, color):
+    detected = {}
+    masks = {}
+
+    for label, props in color_ranges.items():
+        mask = cv2.inRange(hsv, props["lower"], props["upper"])
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        masks[label] = mask
+
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             (x, y), radius = cv2.minEnclosingCircle(cnt)
             x, y, radius = int(x), int(y), int(radius)
-            if radius < 10:
-                continue
             area = cv2.contourArea(cnt)
             perimeter = cv2.arcLength(cnt, True)
             if perimeter == 0:
                 continue
-            circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
+            circularity = 4 * np.pi * (area / (perimeter ** 2 + 1e-5))
             x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(cnt)
             aspect_ratio = float(w_rect) / h_rect
-
-            if 0.8 < circularity < 1.2 and 0.9 < aspect_ratio < 1.1 and area > 150:
+            if 0.7 < circularity < 1.3 and 0.7 < aspect_ratio < 1.4 and area > 500:
                 center = (x, y)
-                cv2.circle(frame, center, radius, color, 2)
-                cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                return center
+                detected[label] = center
+                cv2.circle(frame, center, radius, props["color"], 2)
+                cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, props["color"], 2)
+                break
+
+    for label, mask in masks.items():
+        cv2.imshow(f"{label} mask", mask)
+
+    # Brug kendte afstande
+    width = 90
+    length = 115
+
+    positions = detected.keys()
+    front, back = None, None
+    direction_vector = None
+
+    if "front_left" in positions and "front_right" in positions:
+        front = tuple(np.mean([detected["front_left"], detected["front_right"]], axis=0).astype(int))
+
+    if "back_left" in positions and "back_right" in positions:
+        back = tuple(np.mean([detected["back_left"], detected["back_right"]], axis=0).astype(int))
+
+    if "front_left" in positions and "back_left" in positions and (front is None or back is None):
+        left_front = np.array(detected["front_left"])
+        left_back = np.array(detected["back_left"])
+        v = left_front - left_back
+        direction = v / (np.linalg.norm(v) + 1e-5)
+        center = (left_front + left_back) / 2
+        # Vinkelret vektor
+        perpendicular = np.array([-direction[1], direction[0]])
+        center = center + perpendicular * (width / 2)  # flyt ind mod midten
+        front = tuple((center + length/2 * direction).astype(int))
+        back = tuple((center - length/2 * direction).astype(int))
+
+    if "front_right" in positions and "back_right" in positions and (front is None or back is None):
+        right_front = np.array(detected["front_right"])
+        right_back = np.array(detected["back_right"])
+        v = right_front - right_back
+        direction = v / (np.linalg.norm(v) + 1e-5)
+        center = (right_front + right_back) / 2
+        # Vinkelret vektor
+        perpendicular = np.array([direction[1], -direction[0]])
+        center = center + perpendicular * (width / 2)  # flyt ind mod midten
+        front = tuple((center + length/2 * direction).astype(int))
+        back = tuple((center - length/2 * direction).astype(int))
+
+
+    if "front_left" in positions and "back_right" in positions and (front is None or back is None):
+        front_pt = np.array(detected["front_left"], dtype=np.float32)
+        back_pt  = np.array(detected["back_right"], dtype=np.float32)
+        center = (front_pt + back_pt) / 2
+        direction = front_pt - back_pt
+        direction /= (np.linalg.norm(direction) + 1e-5)
+
+        length_dir = direction
+        width_dir = np.array([-length_dir[1], length_dir[0]])
+
+        center_front = center + width_dir * (width / 2)
+        center_back = center - width_dir * (width / 2)
+
+        front = tuple((center_front + length_dir * (length / 2)).astype(int))
+        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
+
+
+    if "front_right" in positions and "back_left" in positions and (front is None or back is None):
+        front_pt = np.array(detected["front_right"], dtype=np.float32)
+        back_pt  = np.array(detected["back_left"], dtype=np.float32)
+        center = (front_pt + back_pt) / 2
+        direction = front_pt - back_pt
+        direction /= (np.linalg.norm(direction) + 1e-5)
+
+        length_dir = direction
+        width_dir = np.array([-length_dir[1], length_dir[0]])
+
+        center_front = center - width_dir * (width / 2)
+        center_back = center + width_dir * (width / 2)
+
+        front = tuple((center_front + length_dir * (length / 2)).astype(int))
+        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
+
+    if "front_left" in positions and "front_right" in positions and (front is None or back is None):
+        f_left = np.array(detected["front_left"], dtype=np.float32)
+        f_right = np.array(detected["front_right"], dtype=np.float32)
+        front_center = (f_left + f_right) / 2
+
+        # Vektor fra højre til venstre = bredderetning
+        width_vec = f_left - f_right
+        width_dir = width_vec / (np.linalg.norm(width_vec) + 1e-5)
+
+        # Længderetning er vinkelret
+        length_dir = np.array([width_dir[1], -width_dir[0]])
+
+        front = tuple((front_center).astype(int))
+        back = tuple((front_center + length * length_dir).astype(int))
+
+    if "back_left" in positions and "back_right" in positions and (front is None or back is None):
+        b_left = np.array(detected["back_left"], dtype=np.float32)
+        b_right = np.array(detected["back_right"], dtype=np.float32)
+        back_center = (b_left + b_right) / 2
+
+        width_vec = b_left - b_right
+        width_dir = width_vec / (np.linalg.norm(width_vec) + 1e-5)
+        length_dir = np.array([width_dir[1], -width_dir[0]])
+
+        back = tuple((back_center).astype(int))
+        front = tuple((back_center - length * length_dir).astype(int))
+
+    if front is not None and back is not None:
+        direction_vector = (front[0] - back[0], front[1] - back[1])
+        cv2.arrowedLine(frame, back, front, (255, 255, 255), 2)
+
+    cv2.imshow("Robot Debug", frame)
+
+    if front is not None and back is not None:
+        return back, front, direction_vector
+    else:
         return None
 
-    front_marker = find_marker(mask_green, "Front", (0, 255, 0))
-    back_marker = find_marker(mask_back, "Back", (255, 0, 255))
-
-    # Fallback med HoughCircles
-    if front_marker is None or back_marker is None:
-        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
-        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30,
-                                   param1=100, param2=25, minRadius=10, maxRadius=100)
-
-        if circles is not None:
-            candidates = []
-            for (x, y, r) in np.round(circles[0, :]).astype("int"):
-                roi = hsv[max(y - r, 0):min(y + r, hsv.shape[0]),
-                          max(x - r, 0):min(x + r, hsv.shape[1])]
-                if roi.size == 0:
-                    continue
-                h, s, v = np.mean(roi, axis=(0, 1))
-                candidates.append(((x, y), r, h, s, v))
-
-            for (center, r, h, s, v) in candidates:
-                if front_marker is None and 50 <= h <= 70 and s > 40 and v > 100:
-                    front_marker = center
-                    cv2.circle(frame, center, r, (0, 255, 0), 2)
-                    cv2.putText(frame, "Front", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                elif back_marker is None and 155 <= h <= 165 and s > 50 and v > 150:
-                    back_marker = center
-                    cv2.circle(frame, center, r, (255, 0, 255), 2)
-                    cv2.putText(frame, "Back", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-
-            if len(candidates) == 2 and (front_marker is None or back_marker is None):
-                (c1, r1, _, _, _), (c2, r2, _, _, _) = candidates
-                if c1[1] < c2[1]:
-                    front_marker = front_marker or c1
-                    back_marker = back_marker or c2
-                else:
-                    front_marker = front_marker or c2
-                    back_marker = back_marker or c1
-
-    # Tegn vektor og returnér
-    if front_marker and back_marker:
-        cv2.arrowedLine(frame, back_marker, front_marker, (255, 255, 255), 2)
-        direction_vector = (front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
-        cv2.imshow("Robot Debug", frame)
-        return (back_marker, front_marker, direction_vector)
-
-    # Debug visninger
-    cv2.imshow("Front Marker Mask", mask_green)
-    cv2.imshow("Back Marker Mask", mask_back)
-    cv2.imshow("Robot Debug", frame)
-    return None
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
@@ -397,15 +456,17 @@ def detect_egg(frame):
     return egg
 
 
-def inside_field(barriers):
+def inside_field(segments):
     xs, ys = [], []
-    for (x1, y1, x2, y2), _ in barriers:
+    for seg in segments:
+        if isinstance(seg[0], tuple):
+            x1, y1, x2, y2 = seg[0]
+        else:
+            x1, y1, x2, y2 = seg
         xs.extend([x1, x2])
         ys.extend([y1, y2])
-    FIELD_X_MIN, FIELD_X_MAX = min(xs), max(xs)
-    FIELD_Y_MIN, FIELD_Y_MAX = min(ys), max(ys)
+    return min(xs), max(xs), min(ys), max(ys)
 
-    return (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
 
 def filter_barriers_inside_field(barriers, frame_shape, margin=20):
     h, w = frame_shape[:2]
