@@ -295,9 +295,9 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
-    lower_red1 = np.array([5, 150, 150])
+    lower_red1 = np.array([0, 50, 40])
     upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 120, 150])
+    lower_red2 = np.array([170, 50, 40])
     upper_red2 = np.array([180, 255, 255])
 
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
@@ -310,7 +310,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
 
     # Find linjer med Hough Line Transform
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180,
-                            threshold=100, minLineLength=100, maxLineGap=10)
+                            threshold=100, minLineLength=50, maxLineGap=10)
 
     barriers = []
 
@@ -412,16 +412,16 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
             cross_lines.append((x1, y1, x2, y2))
 
     if barriers:
-        filtered = []
-        for (x1, y1, x2, y2) in cross_lines:
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-            too_close_to_barrier = any(
-                np.linalg.norm(np.array((cx, cy)) - np.array(b_center)) < 40
-                for (_, b_center) in barriers
+        margin = 100 
+        FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
+        barriers)
+        cross_lines = [
+            (x1, y1, x2, y2) for (x1, y1, x2, y2) in cross_lines
+            if (
+                FIELD_X_MIN + margin < (x1 + x2) // 2 < FIELD_X_MAX - margin and
+                FIELD_Y_MIN + margin < (y1 + y2) // 2 < FIELD_Y_MAX - margin
             )
-            if not too_close_to_barrier:
-                filtered.append((x1, y1, x2, y2))
-        cross_lines = filtered
+        ]
 
     # Debug mask
     cv2.imshow("Cross Mask", mask)

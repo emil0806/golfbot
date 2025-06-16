@@ -4,13 +4,13 @@ tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
 delivery = MediumMotor(OUTPUT_C)
 
-collector.on(SpeedPercent(45))
+collector.on(SpeedPercent(35))
 
 
 def move_robot(direction):
     speed = 55  # default hastighed
     turn_speed = 7
-    collector_speed = 45
+    collector_speed = 35
 
     collector.on(SpeedPercent(collector_speed))
 

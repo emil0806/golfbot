@@ -4,7 +4,7 @@ import cv2
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
@@ -160,7 +160,7 @@ while True:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
 
-                staging_target = (FIELD_X_MAX - 200,
+                staging_target = (FIELD_X_MAX - 300,
                                   (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
                 back_alignment_target = (
                     FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
@@ -176,41 +176,33 @@ while True:
                     if barrier_blocks_path(front_marker, dummy_target, egg, cross):
                         y = 0
                         x = 0
-                        in_line = is_ball_and_robot_on_line_with_cross(front_marker, dummy_target, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
-                        if (in_line == 1):
-                            y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
-                            x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                        elif(in_line == 2):
-                            y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
-                            x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
+                        if (cm_x <= ((FIELD_X_MAX - FIELD_X_MIN) * 0.5)):
+                            if(cm_y <= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
+                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                                x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                                print("test")
+                                print(f"y:{y}, x: {x}")
+                            elif (cm_y >= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
+                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.80) + FIELD_Y_MIN
+                                x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                                print("test1")
+                                print(f"y:{y}, x: {x}")
                         else:
-                            y = front_marker[1]
-                            x = dummy_target[0]
-                        
+                            print("test2")
+                            x = FIELD_X_MAX - 200
+                            y = (FIELD_Y_MIN + FIELD_Y_MAX) // 2
+
                         staging = (x, y, dummy_target[2], dummy_target[3])
                         staging_dist = np.linalg.norm(
                             np.array(staging[:2]) - np.array(front_marker))
                         
-                        if (staging_dist < 75):
+                        if (staging_dist < 50):
                             at_blocked_staging = True
                         
                         if not at_blocked_staging:                        
                             dummy_target = staging  
                             staged_balls.append(dummy_target)
                             staged_ball = staging
-                            has_staging = True
-                    elif(not at_blocked_staging):
-                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
-                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                        staging = (x, y, dummy_target[2], dummy_target[3])
-                        staging_dist = np.linalg.norm(
-                            np.array(staging[:2]) - np.array(front_marker))
-                        if (staging_dist < 75):
-                            at_blocked_staging = True
-                        
-                        if not at_blocked_staging:
-                            dummy_target = staging 
-                            staged_balls.append(dummy_target)
                             has_staging = True
                     movement_command = determine_direction(
                         robot_info, dummy_target)
@@ -268,7 +260,7 @@ while True:
                     print("[Stage 4] Sending delivery command")
                     conn.sendall(command.encode())
                     last_command = command
-                time.sleep(3)
+                time.sleep(4)
                 command = "continue"
                 if command != last_command:
                     print("[Stage 4.2] Sending continue command")
@@ -325,41 +317,45 @@ while True:
                 dist_to_ball = 0 if best_ball is None else np.linalg.norm(
                     np.array(best_ball[:2]) - np.array(front_marker))
 
+                line1, line2 = draw_lines(front_marker, best_ball, egg, cross)
+
+                # Tegn linje 1
+                cv2.line(frame, 
+                        (int(line1[0][0]), int(line1[0][1])), 
+                        (int(line1[1][0]), int(line1[1][1])), 
+                        (255, 255, 0), 2)
+
+                # Tegn linje 2
+                cv2.line(frame, 
+                        (int(line2[0][0]), int(line2[0][1])), 
+                        (int(line2[1][0]), int(line2[1][1])), 
+                        (0, 255, 255), 2)
+                
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     y = 0
                     x = 0
                     in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
                     if (in_line == 1):
-                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
-                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                    elif(in_line == 2):
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
-                    else:
-                        y = front_marker[1]
-                        x = best_ball[0]
+                    elif(in_line == 2):
+                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                    elif(in_line == 3):
+                        x, y = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
                     
                     staging = (x, y, best_ball[2], best_ball[3])
                     staging_dist = np.linalg.norm(
                         np.array(staging[:2]) - np.array(front_marker))
                     
-                    if (staging_dist < 75):
+                    if (staging_dist < 40):
                         at_blocked_staging = True
                     
                     if not at_blocked_staging:                        
                         best_ball = staging  
                         staged_balls.append(best_ball)
                         staged_ball = staging
-                elif(not at_blocked_staging):
-                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
-                    staging_dist = np.linalg.norm(
-                        np.array(staging[:2]) - np.array(front_marker))
-                    if (staging_dist < 75):
-                        at_blocked_staging = True
-                    
-                    if not at_blocked_staging:
-                        best_ball = staging 
-                        staged_balls.append(best_ball)
+           
 
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"

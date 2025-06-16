@@ -6,7 +6,7 @@ from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
     create_staging_point_edge, create_staging_point_corner,
-    barrier_blocks_path, sort_balls_by_distance, set_homography, determine_staging_point
+    barrier_blocks_path, sort_balls_by_distance, set_homography, determine_staging_point, draw_lines
 )
 
 cap = cv2.VideoCapture(0)
@@ -155,6 +155,19 @@ while True:
 
             dist_to_ball = 0 if staged_ball is None else np.linalg.norm(
                 np.array(staged_ball[:2]) - np.array(robot_position))
+            line1, line2 = draw_lines(front_marker, best_ball, egg, cross)
+
+            # Tegn linje 1
+            cv2.line(frame, 
+                    (int(line1[0][0]), int(line1[0][1])), 
+                    (int(line1[1][0]), int(line1[1][1])), 
+                    (255, 255, 0), 2)
+
+            # Tegn linje 2
+            cv2.line(frame, 
+                    (int(line2[0][0]), int(line2[0][1])), 
+                    (int(line2[1][0]), int(line2[1][1])), 
+                    (0, 255, 255), 2)
 
             if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)

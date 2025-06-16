@@ -129,7 +129,7 @@ def determine_direction(robot_position, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        return "forward"
+        return "fast_forward"
     elif cross < 0:
         if angle_difference > 25:
             return "fast_right"
@@ -291,7 +291,7 @@ def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
     return (int(sx), int(sy), 15, ball[3])
 
 
-def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=75, threshold=60):
+def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=40):
     # Robot front marker
     fx, fy = robot
     # Bold position
@@ -328,16 +328,20 @@ def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=75, threshold=6
     # Tjek æg
     for ex, ey, er, _ in eggs:
         if dist_to_center(ex, ey) <= threshold + er:
+            print("egg")
             return True
         if dist_to_edges(ex, ey) <= threshold + er:
+            print("egg1")
             return True
 
     # Tjek kryds
     for (x1, y1, x2, y2) in crosses:
         midx, midy = (x1 + x2) / 2, (y1 + y2) / 2
         if dist_to_center(midx, midy) <= threshold:
+            print("cross")
             return True
         if dist_to_edges(midx, midy) <= threshold:
+            print("cross1")
             return True
 
     return False
@@ -401,12 +405,15 @@ def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FI
 
 
 def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    x_25 = (FIELD_X_MAX - FIELD_X_MIN) / 4
-    x_50 = (FIELD_X_MAX - FIELD_X_MIN) / 2
-    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) / 4) * 3
-    y_25 = (FIELD_Y_MAX - FIELD_Y_MIN) / 4
-    y_50 = (FIELD_Y_MAX - FIELD_Y_MIN) / 2
-    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) / 4) * 3
+    fx, fy = front_marker
+    bx, by = best_ball[:2]
+
+    x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.2) + FIELD_X_MIN
+    x_50 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.5) + FIELD_X_MIN
+    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.8) + FIELD_X_MIN
+    y_25 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.2) + FIELD_Y_MIN
+    y_50 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.5) + FIELD_Y_MIN
+    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.8) + FIELD_Y_MIN
 
     robot_quadrant = determine_robot_quadrant(
         front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
@@ -420,14 +427,13 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     elif ((robot_quadrant == 1 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 1)):
         return (x_25, y_50)
     elif ((robot_quadrant == 1 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 1)):
-        return (x_75, y_25)
+        return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
-        return (x_75, y_75)
+        return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
         return (x_75, y_50)
     elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
         return (x_50, y_75)
-
 
 def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
     bx, by = best_ball[:2]
@@ -440,10 +446,50 @@ def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_M
 def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, margin=100):
     fx, fy = front_marker
     bx, by = best_ball[:2]
-
-    if ((fx >= CROSS_X_MIN - margin and fx <= CROSS_X_MAX + margin) and (bx >= CROSS_X_MIN - margin and bx <= CROSS_X_MAX + margin)):
+    if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+        print("0")
+        return 0
+    print(f"fx: {fx}, fy: {fy}, bx: {bx}, by:{by}")
+    if (((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)) and ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin))):
+        print("1")
         return 1
-    elif ((fy >= CROSS_Y_MIN - margin and fy <= CROSS_Y_MAX + margin) and (by >= CROSS_Y_MIN - margin and by <= CROSS_Y_MAX + margin)):
+    elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
+        print("2")
         return 2
     else:
-        return 0
+        print("3")
+        return 3
+
+def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    ball_q = determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    robot_q = determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    if ball_q == robot_q:
+        return True
+    else:
+        return False
+
+def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
+    # Robot front marker
+    fx, fy = robot
+    # Bold position
+    bx, by = ball[:2]
+
+    # Step 1) Definer forward_vector som tuple
+    forward_vector = (fx - bx, fy - by)
+
+    # Step 2) Fundament til at normalisere forward_vector
+    mag = math.hypot(*forward_vector) or 1.0
+    ux, uy = forward_vector[0] / mag, forward_vector[1] / mag
+
+    # Step 3) Normal vector
+    nx, ny = -uy, ux
+
+    # Step 4) Definer offsets
+    offs_x, offs_y = nx * robot_radius, ny * robot_radius
+
+    # Step 5) Linje højre og venstre for robot
+    line1 = ((bx + offs_x, by + offs_y), (fx + offs_x, fy + offs_y))
+    line2 = ((bx - offs_x, by - offs_y), (fx - offs_x, fy - offs_y))
+
+    return line1, line2
