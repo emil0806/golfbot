@@ -1,13 +1,13 @@
 import math
-import numpy as np, cv2
-
+import numpy as np
+import cv2
 
 
 # =============== 3-D KORREKTION ====================
 # Kamera & bane data  (mm)  – ret kun disse tal hvis noget ændrer sig
-FIELD_W, FIELD_H        = 1800.0, 1200.0
-CAMERA_HEIGHT           = 1480.0       # højde over gulv
-ROBOT_MARKER_HEIGHT     = 140.0        # højde over gulv
+FIELD_W, FIELD_H = 1800.0, 1200.0
+CAMERA_HEIGHT = 1480.0       # højde over gulv
+ROBOT_MARKER_HEIGHT = 140.0        # højde over gulv
 
 # Faktor < 1  (≈ 0.9)  flytter markøren ind mod nadir,
 # så vi får dens projektion ned på gulvplanet.
@@ -15,6 +15,7 @@ _MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
 
 # Kameraets nadir (lodrette nedkast) antages midt på banen
 _CAMERA_CENTER_WORLD = (FIELD_W / 2.0, FIELD_H / 2.0)
+
 
 def _correct_marker(world_pt):
     """
@@ -27,14 +28,17 @@ def _correct_marker(world_pt):
     return (cx + dx, cy + dy)
 # ==================================================
 
+
 # ----------------  PIXEL → WORLD  -----------------
 # Homografi-matrixen H sættes én gang fra mac_server.py
 H = None
+
 
 def set_homography(H_matrix):
     """Kalds én gang i starten – gemmer homografi-matrixen globalt."""
     global H
     H = H_matrix
+
 
 def pix2world(pt):
     """Konverter (x,y) pixel → (X,Y) gulvplan via homografi."""
@@ -43,10 +47,12 @@ def pix2world(pt):
     x, y = pt
     uv1 = np.array([[x, y, 1.]], dtype=float).T   # 3×1
     XY1 = H @ uv1
-    return (float(XY1[0,0]/XY1[2,0]),
-            float(XY1[1,0]/XY1[2,0]))
+    return (float(XY1[0, 0]/XY1[2, 0]),
+            float(XY1[1, 0]/XY1[2, 0]))
+
 
 previous_best_ball = None
+
 
 def sort_balls_by_distance(ball_positions, front_marker):
     if not ball_positions or not front_marker:
@@ -59,10 +65,11 @@ def sort_balls_by_distance(ball_positions, front_marker):
         key=lambda ball: (
             0 if ball[3] == 1 else 1,
             math.hypot(ball[0] - fx, ball[1] - fy)
-            )
+        )
     )
 
     return sorted_balls
+
 
 def find_best_ball(ball_positions, robot_position, front_marker):
     global previous_best_ball
@@ -70,17 +77,19 @@ def find_best_ball(ball_positions, robot_position, front_marker):
     if not ball_positions or not robot_position:
         return None
 
-    (rx, ry) = robot_position 
+    (rx, ry) = robot_position
     (fx, fy) = front_marker
 
     for i, ball in enumerate(ball_positions):
         dist = math.hypot(ball[0] - rx, ball[1] - ry)
 
-    new_best_ball = min(ball_positions, key=lambda ball: math.hypot(ball[0] - fx, ball[1] - fy))
+    new_best_ball = min(ball_positions, key=lambda ball: math.hypot(
+        ball[0] - fx, ball[1] - fy))
     new_dist = math.hypot(new_best_ball[0] - fx, new_best_ball[1] - fy)
 
     if previous_best_ball:
-        old_dist = math.hypot(previous_best_ball[0] - fx, previous_best_ball[1] - fy)
+        old_dist = math.hypot(
+            previous_best_ball[0] - fx, previous_best_ball[1] - fy)
 
         if new_dist > old_dist * 0.95:
             return previous_best_ball
@@ -94,7 +103,7 @@ def determine_direction(robot_position, ball_position):
         return "stop"
 
     # ------- 1. pixel → world (gulvplan) ----------
-    bx, by   = pix2world(ball_position[:2])
+    bx, by = pix2world(ball_position[:2])
 
     (rx_p, ry_p), (fx_p, fy_p), _ = robot_position
     rx_w, ry_w = pix2world((rx_p, ry_p))
@@ -106,16 +115,18 @@ def determine_direction(robot_position, ball_position):
     # -----------------------------------------------
 
     vector_to_ball = (bx - rx, by - ry)
-    vector_front = (fx - rx, fy - ry)   
+    vector_front = (fx - rx, fy - ry)
 
-    dot = vector_front[0] * vector_to_ball[0] + vector_front[1] * vector_to_ball[1]
+    dot = vector_front[0] * vector_to_ball[0] + \
+        vector_front[1] * vector_to_ball[1]
     mag_f = math.hypot(*vector_front)
     mag_b = math.hypot(*vector_to_ball)
     cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
     angle_difference = math.degrees(math.acos(cos_theta))
 
     # Determine if angle is to the left or right using cross product
-    cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
+    cross = -(vector_front[0] * vector_to_ball[1] -
+              vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
         return "forward"
@@ -147,7 +158,7 @@ def point_rect_distance(px, py, rect):
             abs(py - (y + h))      # bund
         ]
         return min(distances)
-    
+
     # Ellers som normalt
     dx = max(x - px, 0, px - (x + w))
     dy = max(y - py, 0, py - (y + h))
@@ -162,13 +173,14 @@ def check_barrier_proximity(point, barriers, threshold=60):
             return True
     return False
 
+
 def is_corner_ball(ball, field_bounds, margin=150):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = field_bounds
 
-    in_top_left     = (x < x_min + margin and y < y_min + margin)
-    in_top_right    = (x > x_max - margin and y < y_min + margin)
-    in_bottom_left  = (x < x_min + margin and y > y_max - margin)
+    in_top_left = (x < x_min + margin and y < y_min + margin)
+    in_top_right = (x > x_max - margin and y < y_min + margin)
+    in_bottom_left = (x < x_min + margin and y > y_max - margin)
     in_bottom_right = (x > x_max - margin and y > y_max - margin)
 
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
@@ -178,10 +190,14 @@ def is_edge_ball(ball, field_bounds, margin=150):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = field_bounds
 
-    near_left   = x_min - margin < x < x_min + margin and y_min + margin < y < y_max - margin
-    near_right  = x_max - margin < x < x_max + margin and y_min + margin < y < y_max - margin
-    near_top    = y_min - margin < y < y_min + margin and x_min + margin < x < x_max - margin
-    near_bottom = y_max - margin < y < y_max + margin and x_min + margin < x < x_max - margin
+    near_left = x_min - margin < x < x_min + \
+        margin and y_min + margin < y < y_max - margin
+    near_right = x_max - margin < x < x_max + \
+        margin and y_min + margin < y < y_max - margin
+    near_top = y_min - margin < y < y_min + \
+        margin and x_min + margin < x < x_max - margin
+    near_bottom = y_max - margin < y < y_max + \
+        margin and x_min + margin < x < x_max - margin
 
     return near_left or near_right or near_top or near_bottom
 
@@ -207,7 +223,6 @@ def create_staging_point_edge(ball, field_bounds, offset_distance=200):
     return (x - offset_distance, y - offset_distance, r, o)
 
 
-
 def create_staging_point_corner(ball, field_bounds, offset_distance=200):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = field_bounds
@@ -227,7 +242,6 @@ def create_staging_point_corner(ball, field_bounds, offset_distance=200):
 
     # Fallback
     return (x, y - offset_distance, r, o)
-
 
 
 # ------------------ ÆG-UNDVIGELSE ------------------
@@ -276,23 +290,54 @@ def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
     # radius 15 er fint til visualisering; farve-id bevares fra bolden
     return (int(sx), int(sy), 15, ball[3])
 
-def barrier_blocks_path(robot, ball, eggs, crosses, threshold=60):
+
+def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=75, threshold=60):
+    # Robot front marker
     fx, fy = robot
+    # Bold position
     bx, by = ball[:2]
-    
+
+    # Step 1) Definer forward_vector som tuple
+    forward_vector = (fx - bx, fy - by)
+
+    # Step 2) Fundament til at normalisere forward_vector
+    mag = math.hypot(*forward_vector) or 1.0
+    ux, uy = forward_vector[0] / mag, forward_vector[1] / mag
+
+    # Step 3) Normal vector
+    nx, ny = -uy, ux
+
+    # Step 4) Definer offsets
+    offs_x, offs_y = nx * robot_radius, ny * robot_radius
+
+    # Step 5) Linje højre og venstre for robot
+    line1 = ((bx + offs_x, by + offs_y), (fx + offs_x, fy + offs_y))
+    line2 = ((bx - offs_x, by - offs_y), (fx - offs_x, fy - offs_y))
+
+   # Hjælpefunktioner:
+    def dist_to_center(px, py):
+        return _point_to_segment_distance(px, py, bx, by, fx, fy)
+
+    def dist_to_edges(px, py):
+        d1 = _point_to_segment_distance(
+            px, py, line1[0][0], line1[0][1], line1[1][0], line1[1][1])
+        d2 = _point_to_segment_distance(
+            px, py, line2[0][0], line2[0][1], line2[1][0], line2[1][1])
+        return min(d1, d2)
+
     # Tjek æg
-    for (ex, ey, er, _) in eggs:
-        dist = _point_to_segment_distance(ex, ey, fx, fy, bx, by)
-        if dist < threshold + er:
+    for ex, ey, er, _ in eggs:
+        if dist_to_center(ex, ey) <= threshold + er:
+            return True
+        if dist_to_edges(ex, ey) <= threshold + er:
             return True
 
     # Tjek kryds
     for (x1, y1, x2, y2) in crosses:
-        # Find midtpunkt af krydslinje
-        cx = (x1 + x2) // 2
-        cy = (y1 + y2) // 2
-        dist = _point_to_segment_distance(cx, cy, fx, fy, bx, by)
-        if dist < threshold:
+        midx, midy = (x1 + x2) / 2, (y1 + y2) / 2
+        if dist_to_center(midx, midy) <= threshold:
+            return True
+        if dist_to_edges(midx, midy) <= threshold:
             return True
 
     return False
@@ -303,8 +348,10 @@ def delivery_routine(robot_info):
     # Go forward to an approach point, turn, then reverse
     return "delivery"
 
+
 def stop_delivery_routine():
     return "continue"
+
 
 def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
 
@@ -317,6 +364,7 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
     if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
         return True
     return False
+
 
 def determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     fx, fy = front_marker
@@ -332,7 +380,8 @@ def determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN
     elif fx >= mid_x and fy >= mid_y:
         return 4
     else:
-        return 5 
+        return 5
+
 
 def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     bx, by = best_ball[:2]
@@ -348,9 +397,9 @@ def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FI
     elif bx >= mid_x and by >= mid_y:
         return 4
     else:
-        return 5 
+        return 5
 
-    
+
 def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     x_25 = (FIELD_X_MAX - FIELD_X_MIN) / 4
     x_50 = (FIELD_X_MAX - FIELD_X_MIN) / 2
@@ -359,39 +408,42 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     y_50 = (FIELD_Y_MAX - FIELD_Y_MIN) / 2
     y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) / 4) * 3
 
-    robot_quadrant = determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-    ball_quadrant = determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    robot_quadrant = determine_robot_quadrant(
+        front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    ball_quadrant = determine_ball_quadrant(
+        best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
 
-    if(robot_quadrant == ball_quadrant):
+    if (robot_quadrant == ball_quadrant):
         return front_marker
-    elif((robot_quadrant == 1 and ball_quadrant == 2) or (robot_quadrant == 2 and ball_quadrant == 1)):
+    elif ((robot_quadrant == 1 and ball_quadrant == 2) or (robot_quadrant == 2 and ball_quadrant == 1)):
         return (x_50, y_25)
-    elif((robot_quadrant == 1 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 1)):
+    elif ((robot_quadrant == 1 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 1)):
         return (x_25, y_50)
-    elif((robot_quadrant == 1 and ball_quadrant == 4)or (robot_quadrant == 4 and ball_quadrant == 1)):
+    elif ((robot_quadrant == 1 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 1)):
         return (x_75, y_25)
-    elif((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
+    elif ((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
         return (x_75, y_75)
-    elif((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
+    elif ((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
         return (x_75, y_50)
-    elif((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
+    elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
         return (x_50, y_75)
-    
+
 
 def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
     bx, by = best_ball[:2]
-    if(bx >= CROSS_X_MIN and bx <= CROSS_X_MAX and by >= CROSS_Y_MIN and by <= CROSS_Y_MAX):
+    if (bx >= CROSS_X_MIN and bx <= CROSS_X_MAX and by >= CROSS_Y_MIN and by <= CROSS_Y_MAX):
         return True
     else:
         return False
+
 
 def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, margin=100):
     fx, fy = front_marker
     bx, by = best_ball[:2]
 
-    if((fx >= CROSS_X_MIN - margin and fx <= CROSS_X_MAX + margin) and (bx >= CROSS_X_MIN - margin and bx <= CROSS_X_MAX + margin)):
+    if ((fx >= CROSS_X_MIN - margin and fx <= CROSS_X_MAX + margin) and (bx >= CROSS_X_MIN - margin and bx <= CROSS_X_MAX + margin)):
         return 1
-    elif((fy >= CROSS_Y_MIN - margin and fy <= CROSS_Y_MAX + margin) and (by >= CROSS_Y_MIN - margin and by <= CROSS_Y_MAX + margin)):
+    elif ((fy >= CROSS_Y_MIN - margin and fy <= CROSS_Y_MAX + margin) and (by >= CROSS_Y_MIN - margin and by <= CROSS_Y_MAX + margin)):
         return 2
     else:
         return 0
