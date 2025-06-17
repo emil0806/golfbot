@@ -3,6 +3,7 @@ import numpy as np
 
 egg_location = []
 
+
 def detect_balls(frame, egg, robot_position, front_marker):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -71,14 +72,16 @@ def detect_balls(frame, egg, robot_position, front_marker):
             ):
 
                 # Tjek at bold ikke er inde i et æg
-                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+                is_inside_egg = any(np.linalg.norm(
+                    np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
                 if robot_position and front_marker:
                     # Brug midtpunkt mellem bagende og front
-                    dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
-                    dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                    dist_to_back = np.linalg.norm(
+                        np.array((x, y)) - np.array(robot_position))
+                    dist_to_front = np.linalg.norm(
+                        np.array((x, y)) - np.array(front_marker))
                     is_inside_robot = dist_to_back < 80 or dist_to_front < 80
-
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
@@ -116,11 +119,14 @@ def detect_balls(frame, egg, robot_position, front_marker):
             # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
-            is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+            is_inside_egg = any(np.linalg.norm(
+                np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             is_inside_robot = False
             if robot_position:
-                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
-                dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                dist_to_back = np.linalg.norm(
+                    np.array((x, y)) - np.array(robot_position))
+                dist_to_front = np.linalg.norm(
+                    np.array((x, y)) - np.array(front_marker))
                 is_inside_robot = dist_to_back < 80 or dist_to_front < 80
 
             if not is_inside_egg and not is_inside_robot:
@@ -130,6 +136,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
                     ball_positions.append((x, y, r, 1))
 
     return ball_positions
+
 
 def detect_robot(frame):
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -158,7 +165,8 @@ def detect_robot(frame):
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         masks[label] = mask
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             (x, y), radius = cv2.minEnclosingCircle(cnt)
             x, y, radius = int(x), int(y), int(radius)
@@ -173,7 +181,8 @@ def detect_robot(frame):
                 center = (x, y)
                 detected[label] = center
                 cv2.circle(frame, center, radius, props["color"], 2)
-                cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, props["color"], 2)
+                cv2.putText(frame, label, (x - 20, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, props["color"], 2)
                 break
 
     for label, mask in masks.items():
@@ -188,10 +197,12 @@ def detect_robot(frame):
     direction_vector = None
 
     if "front_left" in positions and "front_right" in positions:
-        front = tuple(np.mean([detected["front_left"], detected["front_right"]], axis=0).astype(int))
+        front = tuple(
+            np.mean([detected["front_left"], detected["front_right"]], axis=0).astype(int))
 
     if "back_left" in positions and "back_right" in positions:
-        back = tuple(np.mean([detected["back_left"], detected["back_right"]], axis=0).astype(int))
+        back = tuple(
+            np.mean([detected["back_left"], detected["back_right"]], axis=0).astype(int))
 
     if "front_left" in positions and "back_left" in positions and (front is None or back is None):
         left_front = np.array(detected["front_left"])
@@ -217,10 +228,9 @@ def detect_robot(frame):
         front = tuple((center + length/2 * direction).astype(int))
         back = tuple((center - length/2 * direction).astype(int))
 
-
     if "front_left" in positions and "back_right" in positions and (front is None or back is None):
         front_pt = np.array(detected["front_left"], dtype=np.float32)
-        back_pt  = np.array(detected["back_right"], dtype=np.float32)
+        back_pt = np.array(detected["back_right"], dtype=np.float32)
         center = (front_pt + back_pt) / 2
         direction = front_pt - back_pt
         direction /= (np.linalg.norm(direction) + 1e-5)
@@ -232,12 +242,11 @@ def detect_robot(frame):
         center_back = center - width_dir * (width / 2)
 
         front = tuple((center_front + length_dir * (length / 2)).astype(int))
-        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
-
+        back = tuple((center_back - length_dir * (length / 2)).astype(int))
 
     if "front_right" in positions and "back_left" in positions and (front is None or back is None):
         front_pt = np.array(detected["front_right"], dtype=np.float32)
-        back_pt  = np.array(detected["back_left"], dtype=np.float32)
+        back_pt = np.array(detected["back_left"], dtype=np.float32)
         center = (front_pt + back_pt) / 2
         direction = front_pt - back_pt
         direction /= (np.linalg.norm(direction) + 1e-5)
@@ -249,7 +258,7 @@ def detect_robot(frame):
         center_back = center + width_dir * (width / 2)
 
         front = tuple((center_front + length_dir * (length / 2)).astype(int))
-        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
+        back = tuple((center_back - length_dir * (length / 2)).astype(int))
 
     if "front_left" in positions and "front_right" in positions and (front is None or back is None):
         f_left = np.array(detected["front_left"], dtype=np.float32)
@@ -288,7 +297,6 @@ def detect_robot(frame):
         return back, front, direction_vector
     else:
         return None
-
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
@@ -383,7 +391,6 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
     cross_lines = []
 
-
     for line in lines:
         x1, y1, x2, y2 = line[0]
         cx = (x1 + x2) // 2
@@ -412,9 +419,9 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
             cross_lines.append((x1, y1, x2, y2))
 
     if barriers:
-        margin = 100 
+        margin = 100
         FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-        barriers)
+            barriers)
         cross_lines = [
             (x1, y1, x2, y2) for (x1, y1, x2, y2) in cross_lines
             if (

@@ -369,7 +369,7 @@ def create_staging_ball_cross(ball, cross_bounds, offset_distance=200):
     sx = cx + ux * offset_distance
     sy = cy + uy * offset_distance
 
-    # 5) Returnér staging-punktet (som en “bold” med samme radius + farve-id)
+    # 5) Returner staging-punktet (som en “bold” med samme radius + farve-id)
     return (int(sx), int(sy), r, o)
 
 
