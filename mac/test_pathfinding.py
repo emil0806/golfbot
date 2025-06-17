@@ -3,6 +3,7 @@ import math
 import pathfinding
 from visualize_pathfinding import visualize_pathfinding
 
+
 class TestPathfinding(unittest.TestCase):
     def setUp(self):
         pathfinding.previous_best_ball = None
@@ -13,14 +14,14 @@ class TestPathfinding(unittest.TestCase):
         robot_pos = ((600, 600), (700, 600), 0)  # Center field, facing right
         balls = [(900, 900), (800, 800), (300, 300)]
 
-        best_ball = pathfinding.find_best_ball(balls, robot_pos[0], robot_pos[1])
-        
+        best_ball = pathfinding.find_best_ball(
+            balls, robot_pos[0], robot_pos[1])
+
         self.assertEqual(best_ball, (800, 800))
-        
+
         visualize_pathfinding(robot_pos, balls)
 
         print("\n")
-
 
     def test_find_best_ball_sticks_with_previous(self):
         self.print_test_header("test_find_best_ball_sticks_with_previ")
@@ -31,10 +32,11 @@ class TestPathfinding(unittest.TestCase):
 
         # New "best" is only slightly closer
         balls = [(795, 795), (1000, 1000)]
-        best_ball = pathfinding.find_best_ball(balls, robot_pos[0], robot_pos[1])
-        
+        best_ball = pathfinding.find_best_ball(
+            balls, robot_pos[0], robot_pos[1])
+
         self.assertEqual(best_ball, (800, 800))  # Should keep old
-        
+
         visualize_pathfinding(robot_pos, balls)
 
         print("\n")
@@ -52,7 +54,6 @@ class TestPathfinding(unittest.TestCase):
         visualize_pathfinding(robot_pos, ball_pos)
 
         print("\n")
-
 
     def test_determine_direction_right_turn(self):
         self.print_test_header("test_determine_direction_right_turn")
@@ -87,13 +88,16 @@ class TestPathfinding(unittest.TestCase):
 
         for i, (ball_pos, expected_direction) in enumerate(test_cases):
             with self.subTest(i=i, ball=ball_pos):
-                direction = pathfinding.determine_direction(robot_pos, ball_pos)
-                print(f"Test {i}: Ball at {ball_pos}, Expected: {expected_direction}, Got: {direction}")
+                direction = pathfinding.determine_direction(
+                    robot_pos, ball_pos)
+                print(
+                    f"Test {i}: Ball at {ball_pos}, Expected: {expected_direction}, Got: {direction}")
                 visualize_pathfinding(robot_pos, ball_pos)
                 self.assertEqual(direction, expected_direction)
 
     def print_test_header(self, test_name):
         print(f"\n{'='*10} RUNNING: {test_name} {'='*10}")
+
 
 if __name__ == "__main__":
     unittest.main()

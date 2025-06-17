@@ -3,6 +3,7 @@ import numpy as np
 
 egg_location = []
 
+
 def detect_balls(frame, egg, robot_position, front_marker):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -71,14 +72,16 @@ def detect_balls(frame, egg, robot_position, front_marker):
             ):
 
                 # Tjek at bold ikke er inde i et æg
-                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+                is_inside_egg = any(np.linalg.norm(
+                    np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
                 if robot_position and front_marker:
                     # Brug midtpunkt mellem bagende og front
-                    dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
-                    dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                    dist_to_back = np.linalg.norm(
+                        np.array((x, y)) - np.array(robot_position))
+                    dist_to_front = np.linalg.norm(
+                        np.array((x, y)) - np.array(front_marker))
                     is_inside_robot = dist_to_back < 80 or dist_to_front < 80
-
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
@@ -116,11 +119,14 @@ def detect_balls(frame, egg, robot_position, front_marker):
             # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
 
-            is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+            is_inside_egg = any(np.linalg.norm(
+                np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             is_inside_robot = False
             if robot_position:
-                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
-                dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                dist_to_back = np.linalg.norm(
+                    np.array((x, y)) - np.array(robot_position))
+                dist_to_front = np.linalg.norm(
+                    np.array((x, y)) - np.array(front_marker))
                 is_inside_robot = dist_to_back < 80 or dist_to_front < 80
 
             if not is_inside_egg and not is_inside_robot:
@@ -130,6 +136,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
                     ball_positions.append((x, y, r, 1))
 
     return ball_positions
+
 
 def detect_robot(frame):
     # Forbedret lysstyrke og kontrast
@@ -159,7 +166,8 @@ def detect_robot(frame):
     mask_back = cv2.morphologyEx(mask_back, cv2.MORPH_CLOSE, kernel)
 
     def find_marker(mask, label, color):
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             (x, y), radius = cv2.minEnclosingCircle(cnt)
             x, y, radius = int(x), int(y), int(radius)
@@ -176,7 +184,8 @@ def detect_robot(frame):
             if 0.8 < circularity < 1.2 and 0.9 < aspect_ratio < 1.1 and area > 150:
                 center = (x, y)
                 cv2.circle(frame, center, radius, color, 2)
-                cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                cv2.putText(frame, label, (x - 20, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 return center
         return None
 
@@ -203,11 +212,13 @@ def detect_robot(frame):
                 if front_marker is None and 50 <= h <= 70 and s > 40 and v > 100:
                     front_marker = center
                     cv2.circle(frame, center, r, (0, 255, 0), 2)
-                    cv2.putText(frame, "Front", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(
+                        frame, "Front", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 elif back_marker is None and 155 <= h <= 165 and s > 50 and v > 150:
                     back_marker = center
                     cv2.circle(frame, center, r, (255, 0, 255), 2)
-                    cv2.putText(frame, "Back", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+                    cv2.putText(
+                        frame, "Back", (center[0]-20, center[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
             if len(candidates) == 2 and (front_marker is None or back_marker is None):
                 (c1, r1, _, _, _), (c2, r2, _, _, _) = candidates
@@ -221,7 +232,8 @@ def detect_robot(frame):
     # Tegn vektor og returnér
     if front_marker and back_marker:
         cv2.arrowedLine(frame, back_marker, front_marker, (255, 255, 255), 2)
-        direction_vector = (front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
+        direction_vector = (
+            front_marker[0] - back_marker[0], front_marker[1] - back_marker[1])
         cv2.imshow("Robot Debug", frame)
         return (back_marker, front_marker, direction_vector)
 
@@ -324,7 +336,6 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
     cross_lines = []
 
-
     for line in lines:
         x1, y1, x2, y2 = line[0]
         cx = (x1 + x2) // 2
@@ -406,6 +417,7 @@ def inside_field(barriers):
     FIELD_Y_MIN, FIELD_Y_MAX = min(ys), max(ys)
 
     return (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
 
 def filter_barriers_inside_field(barriers, frame_shape, margin=20):
     h, w = frame_shape[:2]

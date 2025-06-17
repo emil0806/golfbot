@@ -6,7 +6,7 @@ from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
     create_staging_point_edge, create_staging_point_corner,
-    barrier_blocks_path, sort_balls_by_distance, set_homography, determine_staging_point
+    barrier_blocks_path, sort_balls_by_distance, set_homography, determine_staging_point, create_staging_ball_cross
 )
 
 cap = cv2.VideoCapture(0)
@@ -36,7 +36,7 @@ while barrier_call < 5:
 
         egg = detect_egg(frame)
         ball_positions = detect_balls(frame, egg,
-                                       robot_position, front_marker)
+                                      robot_position, front_marker)
 
         bar = detect_barriers(frame, robot_position, ball_positions)
         barriers.append(bar)
@@ -51,13 +51,14 @@ while barrier_call < 5:
 
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
+    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
+        flat_barriers)
     barriers = flat_barriers
 else:
     barriers = []
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
         1], 0, frame.shape[0]
-    
+
     # Homografi til test  (samme logik som i mac_server.py)
     PIX_CORNERS = np.float32([
         [FIELD_X_MIN, FIELD_Y_MIN],
@@ -86,11 +87,11 @@ while True:
         continue
 
     frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
-    
+
     egg = detect_egg(frame)
 
     robot_info = detect_robot(frame)
-        
+
     staged_balls = []
     ball_positions = None
     best_staging = None
@@ -101,9 +102,9 @@ while True:
         robot_position, front_marker, direction = robot_info
         rx, ry = robot_position
         ball_positions = detect_balls(frame, egg, robot_position, front_marker)
-    
+
         ball_positions = [(x, y, r, o) for (x, y, r, o) in ball_positions if FIELD_X_MIN + 10 <
-                        x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
+                          x < FIELD_X_MAX - 10 and FIELD_Y_MIN + 10 < y < FIELD_Y_MAX - 10]
 
         # Filtrér bolde for afstand til robot
         COLLECTION_RADIUS = 20
@@ -119,9 +120,19 @@ while True:
         field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
         for ball in ball_positions:
             if is_corner_ball(ball, field_bounds):
-                staged_balls.append((create_staging_point_corner(ball, field_bounds)))
+                staged_balls.append(
+                    (create_staging_point_corner(ball, field_bounds)))
             elif is_edge_ball(ball, field_bounds):
-                staged_balls.append((create_staging_point_edge(ball, field_bounds)))
+                staged_balls.append(
+                    (create_staging_point_edge(ball, field_bounds)))
+
+        # Vis staging til bolde, der ligger i krydset
+        cross_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+        for ball in ball_positions:
+            if create_staging_ball_cross(ball, cross_bounds):
+                staged_balls.append(
+                    (create_staging_ball_cross(ball, cross_bounds)))
+                print("Staging point for ball in cross:", ball)
 
         if best_ball:
             # Hvis best_ball er edge eller corner
@@ -157,17 +168,18 @@ while True:
                 np.array(staged_ball[:2]) - np.array(robot_position))
 
             if barrier_blocks_path(front_marker, best_ball, egg, cross):
-                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-                    x, y = point_for_staging
-                    # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
-                    staging = (x, y, best_ball[2], best_ball[3])
-                    best_ball = staging  # brug stagingpunkt som mål
-                    staged_balls.append(best_ball)
-                    staged_ball = staging
-                    has_staging = True
+                point_for_staging = determine_staging_point(
+                    front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                x, y = point_for_staging
+                # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                staging = (x, y, best_ball[2], best_ball[3])
+                best_ball = staging  # brug stagingpunkt som mål
+                staged_balls.append(best_ball)
+                staged_ball = staging
+                has_staging = True
             elif (has_staging and dist_to_ball > 50):
                 staging = (best_ball[0], robot_position[1],
-                            best_ball[2], best_ball[3])
+                           best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
                 staged_ball = staging
@@ -215,7 +227,7 @@ while True:
         cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
 
     if barriers:
-    # --- Tegn barriers og kryds ---
+        # --- Tegn barriers og kryds ---
         for (x1, y1, x2, y2), center in barriers:
             cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
             cx, cy = center

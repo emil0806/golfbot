@@ -257,26 +257,21 @@ def create_staging_ball_cross(ball, cross_bounds, offset_distance=200):
     dx = bx - cx  # vandret
     dy = by - cy  # lodret
 
-    # Step 3) Find den "dominerende" retning - kør udenom fjerneste "arm"
-    if abs(dx) > abs(dy):  # Kør udenom i x-retning
-        if dx > 0:
-            sx = Xmax + offset_distance
-            sy = cy + dy * 0.5  # halvt ned langs krydsets midterakse
-        else:
-            sx = Xmin - offset_distance
-            sy = cy + dy * 0.5
-    else:  # Kør udenom i y-retning
-        if dy > 0:
-            sy = Ymax + offset_distance
-            sx = cx + dx * 0.5  # halvt til højre langs krydsets midterakse
-        else:
-            sy = Ymin - offset_distance
-            sx = cx + dx * 0.5
-    # Step 4) Returner staging-punktet
+    # Step 3) Tegn kvadrant via fortegn på dx, dy
+    sign_x = 1 if dx >= 0 else -1
+    sign_y = 1 if dy >= 0 else -1
+
+    # Step 4) Diagonalafstand svarende til offset_distance i 45°
+    diagonal_distance = offset_distance / math.sqrt(2)
+
+    # Step 5) Beregn staging-punktet
+    sx = cx + sign_x * diagonal_distance
+    sy = cy + sign_y * diagonal_distance
+
     return (int(sx), int(sy), r, o)
 
-
 # ------------------ ÆG-UNDVIGELSE ------------------
+
 
 def _point_to_segment_distance(px, py, x1, y1, x2, y2):
     if (x1, y1) == (x2, y2):
