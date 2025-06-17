@@ -17,7 +17,7 @@ def _make_kf():
 front_kf, back_kf = _make_kf(), _make_kf()
 last_front = last_back = None
 last_seen  = time.time()
-MAX_MISS   = 0.7
+MAX_MISS   = 2.0
 
 egg_location = []
 
@@ -151,7 +151,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
 
 def detect_robot(frame):
     global last_front, last_back, last_seen
-    
+
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -310,16 +310,15 @@ def detect_robot(frame):
     front, last_front = _step(front_kf, front, last_front)
     back , last_back  = _step(back_kf , back , last_back)
 
-    # ---------- (D) sanity-check & timeout ----------
     if front and back:
         d = np.linalg.norm(np.subtract(front,back))
-        if 100 <= d <= 150:                  # plausibel afstand
+        if 85 <= d <= 120: 
             last_seen = t_now
-        else:                                # åbenlys fejl
+        else:         
             front = back = None
 
     if front is None and back is None and (t_now-last_seen) > MAX_MISS:
-        return None                          # mistet for længe
+        return None 
 
     front = front or last_front
     back  = back  or last_back
