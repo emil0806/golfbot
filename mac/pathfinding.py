@@ -6,8 +6,8 @@ import cv2
 # =============== 3-D KORREKTION ====================
 # Kamera & bane data  (mm)  – ret kun disse tal hvis noget ændrer sig
 FIELD_W, FIELD_H = 1800.0, 1200.0
-CAMERA_HEIGHT = 1480.0       # højde over gulv
-ROBOT_MARKER_HEIGHT = 140.0        # højde over gulv
+CAMERA_HEIGHT = 1510.0       # højde over gulv
+ROBOT_MARKER_HEIGHT = 145.0        # højde over gulv
 
 # Faktor < 1  (≈ 0.9)  flytter markøren ind mod nadir,
 # så vi får dens projektion ned på gulvplanet.
@@ -131,17 +131,21 @@ def determine_direction(robot_position, ball_position):
     if angle_difference < 2.5:
         return "fast_forward"
     elif cross < 0:
-        if angle_difference > 25:
+        if angle_difference > 30:
             return "fast_right"
-        elif angle_difference > 15:
+        elif angle_difference > 20:
             return "right"
+        elif angle_difference > 10:
+            return "medium_right"
         else:
             return "slow_right"
     else:
-        if angle_difference > 25:
+        if angle_difference > 30:
             return "fast_left"
-        elif angle_difference > 15:
+        elif angle_difference > 20:
             return "left"
+        elif angle_difference > 10:
+            return "medium_left"
         else:
             return "slow_left"
 

@@ -18,10 +18,10 @@ def detect_balls(frame, egg, robot_position, front_marker):
     hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
 
     # Justeret HSV-grænser
-    lower_white = np.array([0, 0, 200])
-    upper_white = np.array([180, 50, 255])
-    lower_orange = np.array([12, 0, 0])
-    upper_orange = np.array([32, 255, 255])
+    lower_white = np.array([0, 0, 180])
+    upper_white = np.array([255, 50, 255])
+    lower_orange = np.array([10, 0, 0])
+    upper_orange = np.array([35, 255, 255])
 
     # Masker
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
@@ -71,7 +71,9 @@ def detect_balls(frame, egg, robot_position, front_marker):
             ):
 
                 # Tjek at bold ikke er inde i et æg
-                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+                is_inside_egg = False
+                if egg:
+                    is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
                 if robot_position and front_marker:
                     # Brug midtpunkt mellem bagende og front
@@ -115,13 +117,14 @@ def detect_balls(frame, egg, robot_position, front_marker):
 
             # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
-
-            is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
+            is_inside_egg = False
+            if egg:
+                is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             is_inside_robot = False
             if robot_position:
                 dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
                 dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
-                is_inside_robot = dist_to_back < 50 or dist_to_front < 80
+                is_inside_robot = dist_to_back < 60 or dist_to_front < 80
 
             if not is_inside_egg and not is_inside_robot:
                 if is_white:
@@ -138,7 +141,10 @@ def detect_robot(frame):
     l_clahe = clahe.apply(l)
     lab_clahe = cv2.merge((l_clahe, a, b))
     frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-    hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
+    frame_normalized = np.zeros_like(frame_clahe)
+    cv2.normalize(frame_clahe, frame_normalized, 0, 255, cv2.NORM_MINMAX)
+
+    hsv = cv2.cvtColor(frame_normalized, cv2.COLOR_BGR2HSV)
 
     kernel = np.ones((5, 5), np.uint8)
 
@@ -430,11 +436,11 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
     return cross_lines  # Liste af linjer
 
 
-def detect_egg(frame):
+def detect_egg(frame, robot_position, front_marker):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     lower_white = np.array([0, 0, 180])
-    upper_white = np.array([180, 80, 255])
+    upper_white = np.array([255, 80, 255])
 
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
 
@@ -450,8 +456,16 @@ def detect_egg(frame):
         area = cv2.contourArea(cnt)
         circularity = 4 * np.pi * (area / (perimeter * perimeter + 1e-5))
 
-        if 0.8 < circularity and radius > 20:
-            egg.append((int(x), int(y), int(radius), 0))
+        if 0.6 < circularity and radius > 20:
+
+            is_inside_robot = False
+            if robot_position:
+                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+                dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
+                is_inside_robot = dist_to_back < 60 or dist_to_front < 80
+
+            if not is_inside_robot:
+                egg.append((int(x), int(y), int(radius), 0))
 
     return egg
 
