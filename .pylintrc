@@ -1,0 +1,19 @@
+[MASTER]
+# Denne fil ligger i projektroden og gælder for hele projektet.
+
+[MESSAGES CONTROL]
+# Slå disse checks fra:
+disable=
+    C0114,  ; missing-module-docstring
+    C0115,  ; missing-class-docstring
+    C0116,  ; missing-function-docstring
+    E1101,   ; no-member (fx cv2.VideoCapture)
+    C0103,
+    C0104
+
+[REPORTS]
+reports=no
+
+[FORMAT]
+# Juster evt. efter din smag
+max-line-length=100

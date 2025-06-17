@@ -13,7 +13,7 @@ class TestBarrierBlocksPath(unittest.TestCase):
         self.ball = (100,  0,  0, None)
 
     def test_no_obstacles(self):
-        # Ingen æg, ingen kryds → ALDRIG blokeret
+        # Ingen æg, ingen kryds, ALDRIG blokeret
         self.assertFalse(barrier_blocks_path(
             robot=self.robot,
             ball=self.ball,

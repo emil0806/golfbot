@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def pick_color(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         hsv = cv2.cvtColor(param, cv2.COLOR_BGR2HSV)
@@ -13,8 +14,9 @@ def pick_color(event, x, y, flags, param):
         preview_bgr = cv2.cvtColor(preview, cv2.COLOR_HSV2BGR)
         cv2.imshow("Picked Color", preview_bgr)
 
+
 def main():
-    cap = cv2.VideoCapture(0) 
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Could not open camera.")
@@ -27,7 +29,7 @@ def main():
         if not ret:
             print("Failed to capture frame.")
             break
-        
+
         frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
 
         display_frame = frame.copy()
@@ -39,6 +41,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
