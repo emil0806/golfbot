@@ -1,5 +1,23 @@
 import cv2
 import numpy as np
+import time
+
+def _make_kf():
+    kf = cv2.KalmanFilter(4, 2)
+    kf.transitionMatrix      = np.array([[1,0,1,0],
+                                         [0,1,0,1],
+                                         [0,0,1,0],
+                                         [0,0,0,1]], np.float32)
+    kf.measurementMatrix     = np.eye(2,4, dtype=np.float32)
+    kf.processNoiseCov       = np.eye(4, dtype=np.float32)*1e-2
+    kf.measurementNoiseCov   = np.eye(2, dtype=np.float32)*1e-1
+    kf.errorCovPost          = np.eye(4, dtype=np.float32)
+    return kf
+
+front_kf, back_kf = _make_kf(), _make_kf()
+last_front = last_back = None
+last_seen  = time.time()
+MAX_MISS   = 0.7
 
 egg_location = []
 
@@ -132,6 +150,8 @@ def detect_balls(frame, egg, robot_position, front_marker):
     return ball_positions
 
 def detect_robot(frame):
+    global last_front, last_back, last_seen
+    
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -278,6 +298,34 @@ def detect_robot(frame):
         back = tuple((back_center).astype(int))
         front = tuple((back_center - length * length_dir).astype(int))
 
+    t_now = time.time()
+
+    def _step(kf, meas, last):
+        if meas is not None:                 # har vi en måling?
+            kf.correct(np.float32([[meas[0]],[meas[1]]]))
+            last = meas
+        pred = kf.predict()                  # ny forudsigelse
+        return (int(pred[0]),int(pred[1])) if meas is None else meas, last
+
+    front, last_front = _step(front_kf, front, last_front)
+    back , last_back  = _step(back_kf , back , last_back)
+
+    # ---------- (D) sanity-check & timeout ----------
+    if front and back:
+        d = np.linalg.norm(np.subtract(front,back))
+        if 100 <= d <= 150:                  # plausibel afstand
+            last_seen = t_now
+        else:                                # åbenlys fejl
+            front = back = None
+
+    if front is None and back is None and (t_now-last_seen) > MAX_MISS:
+        return None                          # mistet for længe
+
+    front = front or last_front
+    back  = back  or last_back
+    if front is None or back is None:
+        return None
+    
     if front is not None and back is not None:
         direction_vector = (front[0] - back[0], front[1] - back[1])
         cv2.arrowedLine(frame, back, front, (255, 255, 255), 2)
@@ -288,7 +336,6 @@ def detect_robot(frame):
         return back, front, direction_vector
     else:
         return None
-
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):
