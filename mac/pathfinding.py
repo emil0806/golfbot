@@ -223,7 +223,7 @@ def create_staging_point_edge(ball, field_bounds, offset_distance=200):
     return (x - offset_distance, y - offset_distance, r, o)
 
 
-def create_staging_point_corner(ball, field_bounds, offset_distance=200):
+def create_staging_point_corner(ball, field_bounds, offset_distance=350):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = field_bounds
 
