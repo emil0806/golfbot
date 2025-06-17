@@ -322,8 +322,6 @@ while True:
                 if staging:
                     staging_dist = np.linalg.norm(
                         np.array(staging[:2]) - np.array(front_marker))
-                    ball_dist = np.linalg.norm(
-                        np.array(best_ball[:2]) - np.array(front_marker))
 
                     robot_vector = np.array(front_marker) - \
                         np.array(robot_position)
