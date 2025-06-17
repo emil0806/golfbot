@@ -347,6 +347,32 @@ def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=4
     return False
 
 
+def create_staging_ball_cross(ball, cross_bounds, offset_distance=200):
+    # Opsæt situationen
+    bx, by, r, o = ball  # bold position samt radius og farve-id'et
+    Xmin, Xmax, Ymin, Ymax = cross_bounds  # krydsets ramme
+
+    # 1) Find krydsets centrum
+    cx = (Xmin + Xmax) / 2.0
+    cy = (Ymin + Ymax) / 2.0
+
+    # 2) Retningsvektor fra centrum til bold
+    dx = bx - cx
+    dy = by - cy
+
+    # 3) Normaliser vektoren (så længden = 1)
+    mag = math.hypot(dx, dy) or 1.0
+    ux = dx / mag
+    uy = dy / mag
+
+    # 4) Flyt offset_distance mm ud ad netop denne retning
+    sx = cx + ux * offset_distance
+    sy = cy + uy * offset_distance
+
+    # 5) Returnér staging-punktet (som en “bold” med samme radius + farve-id)
+    return (int(sx), int(sy), r, o)
+
+
 def delivery_routine(robot_info):
     # Simple placeholder routine
     # Go forward to an approach point, turn, then reverse
@@ -435,6 +461,7 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
         return (x_50, y_75)
 
+
 def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
     bx, by = best_ball[:2]
     if (bx >= CROSS_X_MIN and bx <= CROSS_X_MAX and by >= CROSS_Y_MIN and by <= CROSS_Y_MAX):
@@ -460,14 +487,18 @@ def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, C
         print("3")
         return 3
 
+
 def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    ball_q = determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-    robot_q = determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    ball_q = determine_ball_quadrant(
+        best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    robot_q = determine_robot_quadrant(
+        front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
 
     if ball_q == robot_q:
         return True
     else:
         return False
+
 
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     # Robot front marker
