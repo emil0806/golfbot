@@ -121,7 +121,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
             if robot_position:
                 dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
                 dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
-                is_inside_robot = dist_to_back < 80 or dist_to_front < 80
+                is_inside_robot = dist_to_back < 50 or dist_to_front < 80
 
             if not is_inside_egg and not is_inside_robot:
                 if is_white:

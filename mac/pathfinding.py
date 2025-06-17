@@ -328,20 +328,16 @@ def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=4
     # Tjek æg
     for ex, ey, er, _ in eggs:
         if dist_to_center(ex, ey) <= threshold + er:
-            print("egg")
             return True
         if dist_to_edges(ex, ey) <= threshold + er:
-            print("egg1")
             return True
 
     # Tjek kryds
     for (x1, y1, x2, y2) in crosses:
         midx, midy = (x1 + x2) / 2, (y1 + y2) / 2
         if dist_to_center(midx, midy) <= threshold:
-            print("cross")
             return True
         if dist_to_edges(midx, midy) <= threshold:
-            print("cross1")
             return True
 
     return False
@@ -447,17 +443,12 @@ def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, C
     fx, fy = front_marker
     bx, by = best_ball[:2]
     if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
-        print("0")
         return 0
-    print(f"fx: {fx}, fy: {fy}, bx: {bx}, by:{by}")
     if (((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)) and ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin))):
-        print("1")
         return 1
     elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
-        print("2")
         return 2
     else:
-        print("3")
         return 3
 
 def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
