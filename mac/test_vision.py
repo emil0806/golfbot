@@ -18,6 +18,7 @@ barrier_call = 0
 
 barriers = []
 cross = []
+egg = None
 
 FIELD_X_MIN = None
 FIELD_X_MAX = None
@@ -34,7 +35,7 @@ while barrier_call < 5:
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        egg = detect_egg(frame)
+        egg = detect_egg(frame, robot_position, front_marker)
         ball_positions = detect_balls(frame, egg,
                                        robot_position, front_marker)
 
@@ -87,8 +88,6 @@ while True:
 
     frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     
-    egg = detect_egg(frame)
-
     robot_info = detect_robot(frame)
         
     staged_balls = []
@@ -99,6 +98,9 @@ while True:
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
+
+        egg = detect_egg(frame, robot_position, front_marker)
+
         rx, ry = robot_position
         ball_positions = detect_balls(frame, egg, robot_position, front_marker)
     
