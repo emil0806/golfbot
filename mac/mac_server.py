@@ -283,7 +283,8 @@ while True:
         else:
             pre_sorted_balls = sort_balls_by_distance(
                 ball_positions, front_marker)
-            
+            best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
+
             field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
             corner_balls = [b for b in ball_positions if is_corner_ball(b, field_bounds)]
 
@@ -310,6 +311,7 @@ while True:
                     for ball in pre_sorted_balls:
                         if(ball[3] == 1):
                             best_ball == ball
+                            break
                         elif(not is_corner_ball(ball, field_bounds)):
                             best_ball = ball
                             break
@@ -446,9 +448,45 @@ while True:
                         last_command = movement_command
                 else:
                     corner_stage = 3
-
             elif corner_stage == 3:
                 print("Corner stage 3")
+                if best_ball:
+                    bx, by, _, _ = best_ball
+                    if np.hypot(rx - bx, ry - by) < 120:
+                        robot_vector = np.array(robot_position) - np.array(front_marker)
+                        desired_vector = np.array(best_ball[:2]) - np.array(robot_position)
+
+                        dot = np.dot(robot_vector, desired_vector)
+                        mag_r = np.linalg.norm(robot_vector)
+                        mag_d = np.linalg.norm(desired_vector)
+                        cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
+                        angle_diff = np.degrees(np.arccos(cos_theta))
+
+                        print(f"[Corner Stage 3] Angle to target: {angle_diff:.2f}")
+
+                        if angle_diff > 0.5:
+                            robot_3d = np.append(robot_vector, 0)
+                            desired_3d = np.append(desired_vector, 0)
+                            cross_product = np.cross(robot_3d, desired_3d)[2]
+                            if angle_diff > 30:
+                                movement_command = "left"
+                            elif angle_diff > 20:
+                                movement_command = "medium_left"
+                            elif angle_diff > 10:
+                                movement_command = "slow_left"
+                            else:
+                                movement_command = "very_slow_left"
+                            if movement_command != last_command:
+                                conn.sendall(movement_command.encode())
+                                last_command = movement_command
+                        else:
+                            corner_stage = 4
+                    elif last_command != "slow_backward":
+                        conn.sendall(b"slow_backward")
+                        last_command = "slow_backward"
+                        print("back")
+            elif corner_stage == 4:
+                print("Corner stage 4")
                 if best_ball:
                     bx, by, _, _ = best_ball
                     if np.hypot(rx - bx, ry - by) < 60 and distance < 20:
