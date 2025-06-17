@@ -1,8 +1,6 @@
 from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D, SpeedPercent, LargeMotor, MediumMotor
-from ev3dev2.sensor.lego import UltrasonicSensor
-from ev3dev2.sensor import INPUT_4
 
-us = UltrasonicSensor(INPUT_4)
+
 tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
 delivery = MediumMotor(OUTPUT_C)
@@ -13,26 +11,14 @@ collector.on(SpeedPercent(35))
 def close_ass():
     delivery.on_for_seconds(SpeedPercent(5), 2)
 
-def get_distance():
-    distance = us.distance_centimeters
-    dist_number = str(distance)
-    return dist_number
-
-
 def move_robot(direction):
     speed = 55  # default hastighed
     turn_speed = 7
     collector_speed = 35
-    reverse_collector = False
-
-    if reverse_collector:
-        collector.on(SpeedPercent(-15))
-    else:    
-        collector.on(SpeedPercent(collector_speed))
+   
+    collector.on(SpeedPercent(collector_speed))
 
     if direction == "forward":
-        if(reverse_collector):
-            reverse_collector = False
         print("Moving forward")
         tank_drive.on(SpeedPercent(speed), SpeedPercent(speed)) 
 
@@ -70,8 +56,8 @@ def move_robot(direction):
         tank_drive.on(SpeedPercent(5), SpeedPercent(5)) 
 
     elif direction == "very_slow_backward":
-            print("Reversing very slowly")
-            tank_drive.on(SpeedPercent(-4), SpeedPercent(-4))
+        print("Reversing very slowly")
+        tank_drive.on(SpeedPercent(-4), SpeedPercent(-4))
 
     elif direction == "slow_left":
         print("Turning slowly left")
@@ -86,8 +72,8 @@ def move_robot(direction):
         tank_drive.on(SpeedPercent(10), SpeedPercent(10)) 
 
     elif direction == "slow_backward":
-            print("Reversing slowly")
-            tank_drive.on(SpeedPercent(-7), SpeedPercent(-7))
+        print("Reversing slowly")
+        tank_drive.on(SpeedPercent(-7), SpeedPercent(-7))
 
     elif direction == "medium_left":
         print("Turning medium left")
@@ -102,8 +88,8 @@ def move_robot(direction):
         tank_drive.on(SpeedPercent(20), SpeedPercent(20)) 
 
     elif direction == "medium_backward":
-            print("Reversing medium")
-            tank_drive.on(SpeedPercent(-10), SpeedPercent(-10))
+        print("Reversing medium")
+        tank_drive.on(SpeedPercent(-10), SpeedPercent(-10))
     
     elif direction == "fast_left":
         print("Turning fast left")
@@ -122,20 +108,14 @@ def move_robot(direction):
         tank_drive.on(SpeedPercent(-30), SpeedPercent(-30))
 
     elif direction == "delivery_forward":
-        if(not reverse_collector):
-            reverse_collector = True
         tank_drive.on(SpeedPercent(45), SpeedPercent(45)) 
         print("Delivering forward")
 
     elif direction == "delivery_left":
-        if(not reverse_collector):
-            reverse_collector = True
         print("Turning left")
         tank_drive.on(SpeedPercent(-turn_speed), SpeedPercent(turn_speed)) 
 
     elif direction == "delivery_right":
-        if(not reverse_collector):
-            reverse_collector = True
         print("Turning right")
         tank_drive.on(SpeedPercent(turn_speed), SpeedPercent(-turn_speed))
 

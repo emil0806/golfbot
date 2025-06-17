@@ -39,7 +39,7 @@ prev_ball_count = 11
 corner_stage = 0
 corner_timer = 0
 corner_ball = None
-distance = 0
+staging_target = None
 
 barriers = []
 cross = []
@@ -159,17 +159,8 @@ while True:
             at_blocked_staging = False
             prev_ball_count = len(ball_positions)
 
-        try:
-            conn.setblocking(False)
-            data = conn.recv(1024).decode()
-            if data:
-                distance = float(data)
-                print(f"[EV3] Ultrasonic Distance: {distance} cm")
-        except BlockingIOError:
-            pass  # ingen nye data endnu
-
         ###   Delivery   ###
-        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions) and not corner_ball):
+        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
@@ -215,9 +206,8 @@ while True:
                             has_staging = True
                     movement_command = determine_direction(
                         robot_info, dummy_target)
-                    command = "delivery_" + movement_command 
                     if movement_command != last_command:
-                        conn.sendall(command.encode())
+                        conn.sendall(movement_command.encode())
                         last_command = command
                 else:
                     delivery_stage = 2
@@ -281,6 +271,7 @@ while True:
                 last_delivery_count = len(ball_positions)
 
         else:
+            print("test")
             pre_sorted_balls = sort_balls_by_distance(
                 ball_positions, front_marker)
             best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
@@ -489,7 +480,7 @@ while True:
                 print("Corner stage 4")
                 if best_ball:
                     bx, by, _, _ = best_ball
-                    if np.hypot(rx - bx, ry - by) < 60 and distance < 20:
+                    if np.hypot(rx - bx, ry - by) < 60:
                         stop_command = "stop"
                         conn.sendall(stop_command.encode())  
                         command = "continue"
@@ -540,6 +531,11 @@ while True:
                 cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
                 cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        
+        if (staging_target):
+            cv2.circle(frame, (int(staging_target[0]), int(staging_target[1])), int(r), (100, 0, 100), 2)
+            cv2.putText(frame, "Staging target", (int(x) - 25, int(y) - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
         # Tegn æg (gul)
         if (egg):
