@@ -2,6 +2,8 @@ import unittest
 import math
 from mac.pathfinding import barrier_blocks_path
 
+# kør test vha. python -m unittest tests.test_barrier -v i terminalen for nu
+
 
 class TestBarrierBlocksPath(unittest.TestCase):
     def setUp(self):
