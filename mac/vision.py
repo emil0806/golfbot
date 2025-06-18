@@ -143,10 +143,10 @@ def detect_robot(frame):
     kernel = np.ones((5, 5), np.uint8)
 
     color_ranges = {
-        "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([102, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([45, 0, 0]),  "upper": np.array([60, 255, 255])},
-        "back_left":   {"color": (255, 0, 255),    "lower": np.array([165, 0, 0]), "upper": np.array([180, 255, 255])},
-        "back_right":  {"color": (255, 0, 0),      "lower": np.array([145, 0, 0]), "upper": np.array([160, 255, 255])},
+        "front_left":  {"color": (255, 255, 255), "lower": np.array([90, 0, 0]),  "upper": np.array([105, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([75, 0, 0]),  "upper": np.array([90, 255, 255])},
+        "back_left":   {"color": (255, 0, 255),    "lower": np.array([155, 0, 0]), "upper": np.array([170, 255, 255])},
+        "back_right":  {"color": (255, 0, 0),      "lower": np.array([115, 0, 0]), "upper": np.array([130, 255, 255])},
     }
 
     detected = {}
@@ -295,9 +295,9 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
-    lower_red1 = np.array([0, 50, 40])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 50, 40])
+    lower_red1 = np.array([0, 35, 20])
+    upper_red1 = np.array([15, 255, 255])
+    lower_red2 = np.array([165, 35, 20])
     upper_red2 = np.array([180, 255, 255])
 
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)

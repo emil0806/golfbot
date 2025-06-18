@@ -50,7 +50,7 @@ CROSS_X_MAX = None
 CROSS_Y_MIN = None
 CROSS_Y_MAX = None
 
-while barrier_call < 8:
+while barrier_call < 10:
     ret, frame = cap.read()
     if not ret:
         print("Camera error, no frame captured")
