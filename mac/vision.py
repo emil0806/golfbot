@@ -436,14 +436,14 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
     cross_lines = []
 
+    if lines is not None:            #TILFØJET FOR AT KØRE KAMERA HJEMME !!!DAVID!!!
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
 
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
-        cx = (x1 + x2) // 2
-        cy = (y1 + y2) // 2
-
-        too_close_to_robot = False
-        too_close_to_ball = False
+            too_close_to_robot = False
+            too_close_to_ball = False
 
         if robot_position:
             rx, ry = robot_position
@@ -455,14 +455,14 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
             if np.linalg.norm(np.array((cx, cy)) - np.array((fx, fy))) < 150:
                 too_close_to_robot = True
 
-        if ball_positions:
-            for (bx, by, _, _) in ball_positions:
-                if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
-                    too_close_to_ball = True
-                    break
+            if ball_positions:
+                for (bx, by, _, _) in ball_positions:
+                    if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
+                        too_close_to_ball = True
+                        break
 
-        if not too_close_to_robot and not too_close_to_ball:
-            cross_lines.append((x1, y1, x2, y2))
+            if not too_close_to_robot and not too_close_to_ball:
+                cross_lines.append((x1, y1, x2, y2))
 
     if barriers:
         margin = 100 

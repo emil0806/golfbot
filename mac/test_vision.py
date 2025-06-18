@@ -113,7 +113,7 @@ while True:
         print("Error: Could not capture image")
         continue
 
-    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
     
     robot_info = detect_robot(frame)
         

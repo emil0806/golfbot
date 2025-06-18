@@ -1,10 +1,9 @@
 import socket
 import time
 import cv2
-from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
+from pathfinding import (determine_direction, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
-    egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, draw_lines)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
@@ -230,7 +229,7 @@ while True:
                         robot_info, dummy_target)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
-                        last_command = movement_command
+                        last_command = command
                 else:
                     delivery_stage = 2
 
@@ -345,8 +344,6 @@ while True:
                 if staging:
                     staging_dist = np.linalg.norm(
                         np.array(staging[:2]) - np.array(front_marker))
-                    ball_dist = np.linalg.norm(
-                        np.array(best_ball[:2]) - np.array(front_marker))
 
                     robot_vector = np.array(front_marker) - \
                         np.array(robot_position)
