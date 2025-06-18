@@ -33,6 +33,7 @@ at_staging = False
 at_blocked_staging = False
 staged_ball = None
 delivery_stage = 0
+delivery_active = False
 last_delivery_count = 11
 prev_ball_count = 11
 corner_stage = 0
@@ -40,6 +41,7 @@ corner_timer = 0
 corner_ball = None
 staging_target = None
 last_robot_info = None
+
 
 barriers = []
 cross = []
@@ -161,7 +163,7 @@ while True:
         last_known_robot_info = robot_info
     else:
         robot_info = last_known_robot_info
-        
+
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
@@ -193,116 +195,118 @@ while True:
             prev_ball_count = len(ball_positions)
 
         ###   Delivery   ###
-        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
-            if delivery_stage == 0:
-                print("Initiating delivery routine...")
-                delivery_stage = 1
+        if not delivery_active and len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions):
+            print("Initiating delivery routine...")
+            delivery_active = True
+            delivery_stage = 1
+            last_delivery_count = len(ball_positions)
 
-                staging_target = (FIELD_X_MAX - 300,
-                                  (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
-                back_alignment_target = (
-                    FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+            staging_target = (FIELD_X_MAX - 300,
+                                (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+            back_alignment_target = (
+                FIELD_X_MAX - 20, (FIELD_Y_MIN + FIELD_Y_MAX) // 2)
+            if delivery_active:
+                if delivery_stage == 1:
+                    cm_x = (front_marker[0] + robot_position[0]) / 2
+                    cm_y = (front_marker[1] + robot_position[1]) / 2
+                    dist_to_staging = np.linalg.norm(
+                        np.array((cm_x, cm_y)) - np.array(staging_target))
+                    print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
+                    if dist_to_staging > 100:
+                        dummy_target = (*staging_target, 10, (255, 255, 255))
+                        if barrier_blocks_path(front_marker, dummy_target, egg, cross):
+                            y = 0
+                            x = 0
+                            if (cm_x <= ((FIELD_X_MAX - FIELD_X_MIN) * 0.5)):
+                                if(cm_y <= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
+                                    y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                                    x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                                elif (cm_y >= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
+                                    y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.80) + FIELD_Y_MIN
+                                    x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                            else:
+                                x = FIELD_X_MAX - 200
+                                y = (FIELD_Y_MIN + FIELD_Y_MAX) // 2
 
-            if delivery_stage == 1:
-                cm_x = (front_marker[0] + robot_position[0]) / 2
-                cm_y = (front_marker[1] + robot_position[1]) / 2
-                dist_to_staging = np.linalg.norm(
-                    np.array((cm_x, cm_y)) - np.array(staging_target))
-                print(f"[Stage 1] Distance to staging: {dist_to_staging:.2f}")
-                if dist_to_staging > 100:
-                    dummy_target = (*staging_target, 10, (255, 255, 255))
-                    if barrier_blocks_path(front_marker, dummy_target, egg, cross):
-                        y = 0
-                        x = 0
-                        if (cm_x <= ((FIELD_X_MAX - FIELD_X_MIN) * 0.5)):
-                            if(cm_y <= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
-                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
-                                x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                            elif (cm_y >= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
-                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.80) + FIELD_Y_MIN
-                                x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                        else:
-                            x = FIELD_X_MAX - 200
-                            y = (FIELD_Y_MIN + FIELD_Y_MAX) // 2
-
-                        staging = (x, y, dummy_target[2], dummy_target[3])
-                        staging_dist = np.linalg.norm(
-                            np.array(staging[:2]) - np.array((cm_x, cm_y)))
-                        
-                        if (staging_dist < 30):
-                            at_blocked_staging = True
-                            has_staging = False
-                        
-                        if not at_blocked_staging:                        
-                            dummy_target = staging  
-                            staged_balls.append(dummy_target)
-                            staged_ball = staging
-                            has_staging = True
-                    movement_command = determine_direction(
-                        robot_info, dummy_target, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-                    if movement_command != last_command:
-                        conn.sendall(movement_command.encode())
-                        last_command = command
-                else:
-                    delivery_stage = 2
-
-            if delivery_stage == 2:
-                robot_vector = np.array(
-                    robot_position) - np.array(front_marker)
-                desired_vector = np.array(
-                    back_alignment_target) - np.array(robot_position)
-
-                dot = np.dot(robot_vector, desired_vector)
-                mag_r = np.linalg.norm(robot_vector)
-                mag_d = np.linalg.norm(desired_vector)
-                cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
-                angle_diff = np.degrees(np.arccos(cos_theta))
-
-                print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
-
-                if angle_diff > 1.5:
-                    robot_3d = np.append(robot_vector, 0)
-                    desired_3d = np.append(desired_vector, 0)
-                    cross_product = np.cross(robot_3d, desired_3d)[
-                        2] 
-                    if angle_diff > 25:
-                        movement_command = "left"
-                    elif angle_diff > 15:
-                        movement_command = "medium_left"
+                            staging = (x, y, dummy_target[2], dummy_target[3])
+                            staging_dist = np.linalg.norm(
+                                np.array(staging[:2]) - np.array((cm_x, cm_y)))
+                            
+                            if (staging_dist < 30):
+                                at_blocked_staging = True
+                                has_staging = False
+                            
+                            if not at_blocked_staging:                        
+                                dummy_target = staging  
+                                staged_balls.append(dummy_target)
+                                staged_ball = staging
+                                has_staging = True
+                        movement_command = determine_direction(
+                            robot_info, dummy_target, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                        if movement_command != last_command:
+                            conn.sendall(movement_command.encode())
+                            last_command = command
                     else:
-                        movement_command = "slow_left"
-                    if movement_command != last_command:
-                        conn.sendall(movement_command.encode())
-                        last_command = movement_command
-                else:
-                    delivery_stage = 3
+                        delivery_stage = 2
 
-            if delivery_stage == 3:
-                dist_back = np.linalg.norm(
-                    np.array(robot_position) - np.array(back_alignment_target))
-                print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-                if dist_back > 95:
-                    movement_command = "slow_backward"
-                    if movement_command != last_command:
-                        conn.sendall(movement_command.encode())
-                        last_command = movement_command
-                else:
-                    delivery_stage = 4
+                elif delivery_stage == 2:
+                    robot_vector = np.array(
+                        robot_position) - np.array(front_marker)
+                    desired_vector = np.array(
+                        back_alignment_target) - np.array(robot_position)
 
-            if delivery_stage == 4:
-                command = "delivery"
-                if command != last_command:
-                    print("[Stage 4] Sending delivery command")
-                    conn.sendall(command.encode())
-                    last_command = command
-                time.sleep(4)
-                command = "continue"
-                if command != last_command:
-                    print("[Stage 4.2] Sending continue command")
-                    conn.sendall(command.encode())
-                    last_command = command
-                delivery_stage = 0 
-                last_delivery_count = len(ball_positions)
+                    dot = np.dot(robot_vector, desired_vector)
+                    mag_r = np.linalg.norm(robot_vector)
+                    mag_d = np.linalg.norm(desired_vector)
+                    cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
+                    angle_diff = np.degrees(np.arccos(cos_theta))
+
+                    print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
+
+                    if angle_diff > 1.5:
+                        robot_3d = np.append(robot_vector, 0)
+                        desired_3d = np.append(desired_vector, 0)
+                        cross_product = np.cross(robot_3d, desired_3d)[
+                            2] 
+                        if angle_diff > 25:
+                            movement_command = "left"
+                        elif angle_diff > 15:
+                            movement_command = "medium_left"
+                        else:
+                            movement_command = "slow_left"
+                        if movement_command != last_command:
+                            conn.sendall(movement_command.encode())
+                            last_command = movement_command
+                    else:
+                        delivery_stage = 3
+
+                elif delivery_stage == 3:
+                    dist_back = np.linalg.norm(
+                        np.array(robot_position) - np.array(back_alignment_target))
+                    print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
+                    if dist_back > 95:
+                        movement_command = "slow_backward"
+                        if movement_command != last_command:
+                            conn.sendall(movement_command.encode())
+                            last_command = movement_command
+                    else:
+                        delivery_stage = 4
+
+                elif delivery_stage == 4:
+                    command = "delivery"
+                    if command != last_command:
+                        print("[Stage 4] Sending delivery command")
+                        conn.sendall(command.encode())
+                        last_command = command
+                    time.sleep(4)
+                    command = "continue"
+                    if command != last_command:
+                        print("[Stage 4.2] Sending continue command")
+                        conn.sendall(command.encode())
+                        last_command = command
+                    delivery_stage = 0
+                    delivery_active = False
+                    last_delivery_count = len(ball_positions)
 
         else:
             print("test")
