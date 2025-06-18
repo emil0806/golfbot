@@ -30,7 +30,10 @@ CROSS_X_MAX = None
 CROSS_Y_MIN = None
 CROSS_Y_MAX = None
 
-while barrier_call < 5:
+CROSS_INTERVAL = 5
+last_cross_time = time.time()
+
+while barrier_call < 8:
     ret, frame = cap.read()
     if not ret:
         print("Camera error, no frame captured")
@@ -47,12 +50,9 @@ while barrier_call < 5:
         bar = detect_barriers(frame, robot_position, ball_positions)
         barriers.append(bar)
 
-        cross_line = detect_cross(frame,
-                                  robot_position,
-                                  front_marker,
-                                  ball_positions,
-                                  bar)
-        cross.append(cross_line)
+        cross.append(detect_cross
+                     (frame, robot_position,
+                      front_marker, ball_positions, bar))
     barrier_call += 1
 
 if barriers:
@@ -124,6 +124,13 @@ while True:
 
         sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
         best_ball = sorted_balls[0] if sorted_balls else None
+
+        if time.time() - last_cross_time >= CROSS_INTERVAL:
+            cross = detect_cross(frame, robot_position,
+                                 front_marker, ball_positions, barriers)
+            CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
+                cross)
+            last_cross_time = time.time()
 
         # Vis staging til alle kant/hjørnebolde (debug formål)
         field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)

@@ -50,6 +50,10 @@ CROSS_X_MAX = None
 CROSS_Y_MIN = None
 CROSS_Y_MAX = None
 
+# Tidsinterval for at lave krydset
+CROSS_INTERVAL = 20
+last_cross_time = time.time()
+
 while barrier_call < 8:
     ret, frame = cap.read()
     if not ret:
@@ -71,13 +75,10 @@ while barrier_call < 8:
         bar = detect_barriers(frame, robot_position, ball_positions)
         bar = filter_barriers_inside_field(bar, frame.shape)
         barriers.append(bar)
-        cross.append(
-            detect_cross(frame,
-                         robot_position,
-                         front_marker,
-                         ball_positions,
-                         bar)
-        )
+        cross.append(detect_cross
+                     (frame, robot_position,
+                      front_marker, ball_positions, bar))
+
     barrier_call += 1
 
 if barriers:
@@ -154,6 +155,17 @@ while True:
             at_staging = False
             at_blocked_staging = False
             prev_ball_count = len(ball_positions)
+
+        # Tegn kryds igen efter defineret antal sekunder
+        if time.time() - last_cross_time >= CROSS_INTERVAL:
+            cross = detect_cross(frame,
+                                 robot_position,
+                                 front_marker,
+                                 ball_positions,
+                                 barriers)
+            CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
+                cross)
+            last_cross_time = time.time()
 
         ###   Delivery   ###
         if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
