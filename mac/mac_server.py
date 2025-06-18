@@ -226,7 +226,7 @@ while True:
                             staged_ball = staging
                             has_staging = True
                     movement_command = determine_direction(
-                        robot_info, dummy_target)
+                        robot_info, dummy_target, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
                         last_command = command
@@ -416,7 +416,7 @@ while True:
             if corner_stage == 1:
                 print("Corner stage 1")
                 # Naviger til staging
-                movement_command = determine_direction(robot_info, staging)
+                movement_command = determine_direction(robot_info, staging, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
                 if np.hypot(fx - staging[0], fy - staging[1]) < 50:
                     command = "delivery"
                     conn.sendall(command.encode())
@@ -516,7 +516,7 @@ while True:
                         last_command = "slow_backward"
                         print("back")
             else:
-                movement_command = determine_direction(robot_info, best_ball)
+                movement_command = determine_direction(robot_info, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
 
                 # Tilføj slow logik - kun forward, left og right bliver slow
                 ### DETTE SKAL IMPLEMENTERES ###

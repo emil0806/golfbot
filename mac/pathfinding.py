@@ -98,7 +98,7 @@ def find_best_ball(ball_positions, robot_position, front_marker):
     return new_best_ball
 
 
-def determine_direction(robot_position, ball_position):
+def determine_direction(robot_position, ball_position, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     if not robot_position or not ball_position:
         return "stop"
 
@@ -129,7 +129,10 @@ def determine_direction(robot_position, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        return "forward"
+        if slow_down_close_to_barrier(robot_position, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+            return "slow_forward"
+        else: 
+            return "forward"
     elif cross < 0:
         if angle_difference > 25:
             return "fast_right"
@@ -362,6 +365,18 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
     if FIELD_Y_MIN + 40 + 60 > front_marker[1]:
         return True
     if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
+        return True
+    return False
+
+def slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+
+    if FIELD_X_MIN + 150 > front_marker[0]:
+        return True
+    if FIELD_X_MAX - 150 < front_marker[0]:
+        return True
+    if FIELD_Y_MIN + 150 > front_marker[1]:
+        return True
+    if FIELD_Y_MAX - 150 < front_marker[1]:
         return True
     return False
 
