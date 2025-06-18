@@ -86,13 +86,25 @@ while barrier_call < 8:
                          bar)
         )
     barrier_call += 1
-
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
         flat_barriers)
     
     barriers = flat_barriers
+
+    xs = []
+    ys = []
+    for ((x1, y1, x2, y2), _) in barriers:
+        xs.extend([x1, x2])
+        ys.extend([y1, y2])
+
+    if len(xs) >= 4 and len(ys) >= 4:
+        # Sorter og fjern outliers vha. percentil
+        FIELD_X_MIN = int(np.percentile(xs, 10))
+        FIELD_X_MAX = int(np.percentile(xs, 90))
+        FIELD_Y_MIN = int(np.percentile(ys, 10))
+        FIELD_Y_MAX = int(np.percentile(ys, 90))
 
     # ----------  BEREGN HOMOGRAFI  ---------------
     PIX_CORNERS = np.float32([

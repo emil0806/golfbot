@@ -1,3 +1,4 @@
+import math
 import cv2
 import numpy as np
 import time
@@ -169,10 +170,10 @@ def detect_robot(frame):
     kernel = np.ones((5, 5), np.uint8)
 
     color_ranges = {
-        "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([102, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([45, 0, 0]),  "upper": np.array([60, 255, 255])},
-        "back_left":   {"color": (255, 0, 255),    "lower": np.array([165, 0, 0]), "upper": np.array([180, 255, 255])},
-        "back_right":  {"color": (255, 0, 0),      "lower": np.array([145, 0, 0]), "upper": np.array([160, 255, 255])},
+        "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([130, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([45, 0, 0]),  "upper": np.array([75, 255, 255])},
+        "back_left":   {"color": (255, 0, 255),    "lower": np.array([165, 0, 0]), "upper": np.array([105, 255, 255])},
+        "back_right":  {"color": (255, 0, 0),      "lower": np.array([145, 0, 0]), "upper": np.array([170, 255, 255])},
     }
 
     detected = {}
@@ -349,7 +350,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     # Rød farve (HSV wraparound)
     lower_red1 = np.array([0, 50, 40])
     upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 50, 40])
+    lower_red2 = np.array([160, 50, 40])
     upper_red2 = np.array([180, 255, 255])
 
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
@@ -358,14 +359,14 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
 
     # Let udglatning og edge detection
     blurred = cv2.GaussianBlur(mask, (3, 3), 0)
-    edges = cv2.Canny(blurred, 50, 150)
+    edges = cv2.Canny(blurred, 30, 120)
 
     # Find linjer med Hough Line Transform
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180,
-                            threshold=100, minLineLength=50, maxLineGap=10)
+                            threshold=100, minLineLength=80, maxLineGap=100)
+    
 
     barriers = []
-
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
