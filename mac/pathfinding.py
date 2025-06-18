@@ -370,13 +370,13 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
 
 def slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
 
-    if FIELD_X_MIN + 150 > front_marker[0]:
+    if FIELD_X_MIN + 200 > front_marker[0]:
         return True
-    if FIELD_X_MAX - 150 < front_marker[0]:
+    if FIELD_X_MAX - 200 < front_marker[0]:
         return True
-    if FIELD_Y_MIN + 150 > front_marker[1]:
+    if FIELD_Y_MIN + 200 > front_marker[1]:
         return True
-    if FIELD_Y_MAX - 150 < front_marker[1]:
+    if FIELD_Y_MAX - 200 < front_marker[1]:
         return True
     return False
 

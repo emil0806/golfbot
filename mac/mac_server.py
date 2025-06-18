@@ -56,6 +56,8 @@ CROSS_Y_MIN = None
 CROSS_Y_MAX = None
 CROSS_CENTER = None
 
+last_known_robot_info = None
+
 while barrier_call < 8:
     ret, frame = cap.read()
     if not ret:
@@ -64,6 +66,12 @@ while barrier_call < 8:
 
     frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     robot_info = detect_robot(frame)
+    
+    if robot_info:
+        last_known_robot_info = robot_info
+    else:
+        robot_info = last_known_robot_info
+
     if robot_info:
         robot_position, front_marker, _ = robot_info
     else:
