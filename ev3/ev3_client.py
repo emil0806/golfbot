@@ -1,5 +1,5 @@
 import socket
-from movement import move_robot
+from movement import move_robot, close_ass
 from config import MAC_IP, PORT
 
 # Connect to Mac
@@ -10,8 +10,17 @@ print("Connected to Mac")
 
 current_command = None
 
+start_count = 0
+
+distance_timer = 0
+dist_number = 0
+
 try:
+    if(start_count == 0):
+        close_ass()
+        start_count = 1
     while True:
+
         data = client_socket.recv(1024).decode().strip() 
         if not data:
             continue

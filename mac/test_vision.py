@@ -6,7 +6,7 @@ from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
     create_staging_point_edge, create_staging_point_corner,
-    barrier_blocks_path, sort_balls_by_distance, set_homography
+    barrier_blocks_path, sort_balls_by_distance, set_homography, determine_staging_point, draw_lines
 )
 
 cap = cv2.VideoCapture(0)
@@ -18,6 +18,7 @@ barrier_call = 0
 
 barriers = []
 cross = []
+egg = None
 
 FIELD_X_MIN = None
 FIELD_X_MAX = None
@@ -34,7 +35,7 @@ while barrier_call < 5:
     if robot_info:
         robot_position, front_marker, direction = robot_info
 
-        egg = detect_egg(frame)
+        egg = detect_egg(frame, robot_position, front_marker)
         ball_positions = detect_balls(frame, egg,
                                        robot_position, front_marker)
 
@@ -87,8 +88,6 @@ while True:
 
     frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
     
-    egg = detect_egg(frame)
-
     robot_info = detect_robot(frame)
         
     staged_balls = []
@@ -99,6 +98,9 @@ while True:
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
+
+        egg = detect_egg(frame, robot_position, front_marker)
+
         rx, ry = robot_position
         ball_positions = detect_balls(frame, egg, robot_position, front_marker)
     
@@ -153,30 +155,34 @@ while True:
                     best_staging = staging
                     best_ball = staging
 
-            dist_to_staged_ball = 0 if staged_ball is None else np.linalg.norm(
+            dist_to_ball = 0 if staged_ball is None else np.linalg.norm(
                 np.array(staged_ball[:2]) - np.array(robot_position))
+            line1, line2 = draw_lines(front_marker, best_ball, egg, cross)
 
-            if barrier_blocks_path(robot_position, best_ball, egg, cross):
-                y = 0
-                x = 0
-                if (robot_position[1] > 250 and robot_position[1] < 750 and best_ball[1] > 250 and best_ball[1] < 750):
-                    if (robot_position[1] <= 550):
-                        y = 200
-                        x = 950
-                    else:
-                        y = 800
-                        x = 950
-                else:
-                    y = robot_position[1]
-                    x = best_ball[0]
-                # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
-                staging = (x, y, best_ball[2], best_ball[3])
-                best_ball = staging  # brug stagingpunkt som mål
-                staged_balls.append(best_ball)
-                staged_ball = staging
-                has_staging = True
-            elif (has_staging and dist_to_staged_ball > 50):
-                staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
+            # Tegn linje 1
+            cv2.line(frame, 
+                    (int(line1[0][0]), int(line1[0][1])), 
+                    (int(line1[1][0]), int(line1[1][1])), 
+                    (255, 255, 0), 2)
+
+            # Tegn linje 2
+            cv2.line(frame, 
+                    (int(line2[0][0]), int(line2[0][1])), 
+                    (int(line2[1][0]), int(line2[1][1])), 
+                    (0, 255, 255), 2)
+
+            if barrier_blocks_path(front_marker, best_ball, egg, cross):
+                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                    x, y = point_for_staging
+                    # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
+                    staging = (x, y, best_ball[2], best_ball[3])
+                    best_ball = staging  # brug stagingpunkt som mål
+                    staged_balls.append(best_ball)
+                    staged_ball = staging
+                    has_staging = True
+            elif (has_staging and dist_to_ball > 50):
+                staging = (best_ball[0], robot_position[1],
+                            best_ball[2], best_ball[3])
                 best_ball = staging  # brug stagingpunkt som mål
                 staged_balls.append(best_ball)
                 staged_ball = staging
@@ -202,14 +208,14 @@ while True:
     # --- Tegn staging-points (lilla) ---
     if staged_balls:
         for (x, y, r, o) in staged_balls:
-            cv2.circle(frame, (x, y), int(r), (255, 0, 255), 2)
-            cv2.putText(frame, "Staging", (x - 25, y - 10),
+            cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
+            cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
     if best_staging:
         x, y, r, _ = best_staging
-        cv2.circle(frame, (x, y), int(r), (255, 0, 0), 2)
-        cv2.putText(frame, "Best Staging", (x - 35, y - 10),
+        cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 0), 2)
+        cv2.putText(frame, "Best Staging", (int(x) - 35, int(y) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
     # --- Tegn robot ---
