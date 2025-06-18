@@ -142,20 +142,20 @@ while True:
                 staged_balls.append(
                     (create_staging_point_edge(ball, field_bounds)))
 
-        # Vis staging til bold, der ligger i krydset (til debug)
-        cross_bounds = (CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
-        for ball in ball_positions:
-            if is_ball_in_cross(ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
-                cross_balls.append(
-                    create_staging_ball_cross(ball, cross_bounds)
-                )
-
         if best_ball:
             # Hvis best_ball er edge eller corner
+            # Lav staging-punkt hvis bolden er i hjørne eller ved kant
+            field_bounds = (FIELD_X_MIN, FIELD_X_MAX,
+                            FIELD_Y_MIN, FIELD_Y_MAX)
+            cross_bounds = (CROSS_X_MIN, CROSS_X_MAX,
+                            CROSS_Y_MIN, CROSS_Y_MAX)
             if is_corner_ball(best_ball, field_bounds):
                 staging = create_staging_point_corner(best_ball, field_bounds)
             elif is_edge_ball(best_ball, field_bounds):
                 staging = create_staging_point_edge(best_ball, field_bounds)
+            elif is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+                staging = create_staging_ball_cross(
+                    best_ball, cross_bounds)
             else:
                 staging = None
 
