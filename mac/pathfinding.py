@@ -129,21 +129,21 @@ def determine_direction(robot_position, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        return "fast_forward"
+        return "forward"
     elif cross < 0:
         if angle_difference > 25:
             return "fast_right"
         elif angle_difference > 15:
             return "right"
         else:
-            return "slow_right"
+            return "medium_right"
     else:
         if angle_difference > 25:
             return "fast_left"
         elif angle_difference > 15:
             return "left"
         else:
-            return "slow_left"
+            return "medium_left"
 
 
 def point_rect_distance(px, py, rect):
@@ -408,12 +408,12 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     fx, fy = front_marker
     bx, by = best_ball[:2]
 
-    x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.2) + FIELD_X_MIN
+    x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.15) + FIELD_X_MIN
     x_50 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.5) + FIELD_X_MIN
-    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.8) + FIELD_X_MIN
-    y_25 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.2) + FIELD_Y_MIN
+    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.85) + FIELD_X_MIN
+    y_25 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.15) + FIELD_Y_MIN
     y_50 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.5) + FIELD_Y_MIN
-    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.8) + FIELD_Y_MIN
+    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.85) + FIELD_Y_MIN
 
     robot_quadrant = determine_robot_quadrant(
         front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)

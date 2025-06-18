@@ -337,9 +337,9 @@ while True:
                     in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
                     if (in_line == 1):
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
-                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
+                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.15) + FIELD_X_MIN
                     elif(in_line == 2):
-                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.15) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
                     elif(in_line == 3):
                         x, y = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
@@ -348,7 +348,7 @@ while True:
                     staging_dist = np.linalg.norm(
                         np.array(staging[:2]) - np.array(front_marker))
                     
-                    if (staging_dist < 40):
+                    if (staging_dist < 30):
                         at_blocked_staging = True
                     
                     if not at_blocked_staging:                        
