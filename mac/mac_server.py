@@ -85,13 +85,25 @@ while barrier_call < 8:
                          bar)
         )
     barrier_call += 1
-
 if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
         flat_barriers)
     
     barriers = flat_barriers
+
+    xs = []
+    ys = []
+    for ((x1, y1, x2, y2), _) in barriers:
+        xs.extend([x1, x2])
+        ys.extend([y1, y2])
+
+    if len(xs) >= 4 and len(ys) >= 4:
+        # Sorter og fjern outliers vha. percentil
+        FIELD_X_MIN = int(np.percentile(xs, 10))
+        FIELD_X_MAX = int(np.percentile(xs, 90))
+        FIELD_Y_MIN = int(np.percentile(ys, 10))
+        FIELD_Y_MAX = int(np.percentile(ys, 90))
 
     # ----------  BEREGN HOMOGRAFI  ---------------
     PIX_CORNERS = np.float32([
@@ -144,6 +156,7 @@ while True:
         fx, fy = front_marker
         cm_x = (fx + rx) / 2
         cm_y = (fy + ry) / 2
+        center_robot = (cm_x, cm_y)
 
         current_time = time.time()
 
@@ -365,10 +378,10 @@ while True:
                         (int(line2[1][0]), int(line2[1][1])), 
                         (0, 255, 255), 2)
                 
-                if barrier_blocks_path(front_marker, best_ball, egg, cross):
+                if barrier_blocks_path(center_robot, best_ball, egg, cross):
                     y = 0
                     x = 0
-                    in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER)
+                    in_line = is_ball_and_robot_on_line_with_cross(center_robot, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER)
                     if (in_line == 1):
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
@@ -376,7 +389,8 @@ while True:
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
                     elif(in_line == 3):
-                        x, y = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER)
+                        print("fuck")
+                        x, y = determine_staging_point(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER)
                     
                     staging = (x, y, best_ball[2], best_ball[3])
                     staging_dist = np.linalg.norm(
@@ -536,12 +550,7 @@ while True:
                 cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
                 cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-        
-        if (staging_target):
-            cv2.circle(frame, (int(staging_target[0]), int(staging_target[1])), int(r), (100, 0, 100), 2)
-            cv2.putText(frame, "Staging target", (int(x) - 25, int(y) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-
+    
         # Tegn æg (gul)
         if (egg):
             for (ex, ey, er, _) in egg:

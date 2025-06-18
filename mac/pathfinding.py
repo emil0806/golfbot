@@ -366,8 +366,8 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
     return False
 
 
-def determine_robot_quadrant(front_marker, cross_center):
-    fx, fy = front_marker
+def determine_robot_quadrant(center_robot, cross_center):
+    fx, fy = center_robot
     cx, cy = cross_center
 
     if fx < cx and fy < cy:
@@ -398,8 +398,8 @@ def determine_ball_quadrant(best_ball, cross_center):
         return 5
 
 
-def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER):
-    fx, fy = front_marker
+def determine_staging_point(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER):
+    fx, fy = center_robot
     bx, by = best_ball[:2]
 
     x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.2) + FIELD_X_MIN
@@ -410,12 +410,13 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.8) + FIELD_Y_MIN
 
     robot_quadrant = determine_robot_quadrant(
-        front_marker, CROSS_CENTER)
+        center_robot, CROSS_CENTER)
     ball_quadrant = determine_ball_quadrant(
         best_ball, CROSS_CENTER)
-
+    print(f"robot_q: {robot_quadrant}")
+    print(f"ball_q: {ball_quadrant}")
     if (robot_quadrant == ball_quadrant):
-        return front_marker
+        return center_robot
     elif ((robot_quadrant == 1 and ball_quadrant == 2) or (robot_quadrant == 2 and ball_quadrant == 1)):
         return (x_50, y_25)
     elif ((robot_quadrant == 1 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 1)):
@@ -423,7 +424,7 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     elif ((robot_quadrant == 1 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 1)):
         return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
-        return (fy, bx)
+        return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
         return (x_75, y_50)
     elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
@@ -437,7 +438,7 @@ def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_M
         return False
 
 
-def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=100):
+def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=50):
     fx, fy = front_marker
     bx, by = best_ball[:2]
     if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_CENTER):

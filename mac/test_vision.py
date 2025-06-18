@@ -25,6 +25,12 @@ FIELD_X_MAX = None
 FIELD_Y_MIN = None
 FIELD_Y_MAX = None
 
+CROSS_X_MIN = None
+CROSS_X_MAX = None
+CROSS_Y_MIN = None
+CROSS_Y_MAX = None
+CROSS_CENTER = None
+
 while barrier_call < 5:
     ret, frame = cap.read()
     if not ret:
@@ -54,30 +60,51 @@ if barriers:
     flat_barriers = [b for sublist in barriers for b in sublist]
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
     barriers = flat_barriers
+
+    xs = []
+    ys = []
+    for ((x1, y1, x2, y2), _) in barriers:
+        xs.extend([x1, x2])
+        ys.extend([y1, y2])
+
+    if len(xs) >= 4 and len(ys) >= 4:
+        # Sorter og fjern outliers vha. percentil
+        FIELD_X_MIN = int(np.percentile(xs, 10))
+        FIELD_X_MAX = int(np.percentile(xs, 90))
+        FIELD_Y_MIN = int(np.percentile(ys, 10))
+        FIELD_Y_MAX = int(np.percentile(ys, 90))
+
+    print(f"FIELD_X_MIN {FIELD_X_MIN}, FIELD_X_MAX {FIELD_X_MAX}, FIELD_Y_MIN {FIELD_Y_MIN}, FIELD_Y_MAX {FIELD_Y_MAX}")
 else:
     barriers = []
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
         1], 0, frame.shape[0]
     
-    # Homografi til test  (samme logik som i mac_server.py)
-    PIX_CORNERS = np.float32([
-        [FIELD_X_MIN, FIELD_Y_MIN],
-        [FIELD_X_MAX, FIELD_Y_MIN],
-        [FIELD_X_MAX, FIELD_Y_MAX],
-        [FIELD_X_MIN, FIELD_Y_MAX]
-    ])
-    FIELD_W, FIELD_H = 1800, 1200
-    WORLD_CORNERS = np.float32([
-        [0,        0],
-        [FIELD_W,  0],
-        [FIELD_W,  FIELD_H],
-        [0,        FIELD_H]
-    ])
-    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
-    set_homography(H)
+# Homografi til test  (samme logik som i mac_server.py)
+PIX_CORNERS = np.float32([
+    [FIELD_X_MIN, FIELD_Y_MIN],
+    [FIELD_X_MAX, FIELD_Y_MIN],
+    [FIELD_X_MAX, FIELD_Y_MAX],
+    [FIELD_X_MIN, FIELD_Y_MAX]
+])
+FIELD_W, FIELD_H = 1800, 1200
+WORLD_CORNERS = np.float32([
+    [0,        0],
+    [FIELD_W,  0],
+    [FIELD_W,  FIELD_H],
+    [0,        FIELD_H]
+])
+H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+set_homography(H)
 
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
+    CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
+        flat_cross)
+    CROSS_CENTER = (
+            (CROSS_X_MIN + CROSS_X_MAX) // 2,
+            (CROSS_Y_MIN + CROSS_Y_MAX) // 2
+        )
     cross = flat_cross
 
 while True:
@@ -172,7 +199,7 @@ while True:
                     (0, 255, 255), 2)
 
             if barrier_blocks_path(front_marker, best_ball, egg, cross):
-                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                    point_for_staging = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER)
                     x, y = point_for_staging
                     # Lav stagingpunkt (fx direkte vertikal med robotens x og boldens y)
                     staging = (x, y, best_ball[2], best_ball[3])
