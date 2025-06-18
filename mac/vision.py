@@ -170,9 +170,9 @@ def detect_robot(frame):
 
     color_ranges = {
         "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([102, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([73, 0, 0]),  "upper": np.array([87, 255, 255])},
-        "back_left":   {"color": (255, 0, 255),    "lower": np.array([153, 0, 0]), "upper": np.array([167, 255, 255])},
-        "back_right":  {"color": (255, 0, 0),      "lower": np.array([118, 0, 0]), "upper": np.array([132, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([45, 0, 0]),  "upper": np.array([60, 255, 255])},
+        "back_left":   {"color": (255, 0, 255),    "lower": np.array([165, 0, 0]), "upper": np.array([180, 255, 255])},
+        "back_right":  {"color": (255, 0, 0),      "lower": np.array([145, 0, 0]), "upper": np.array([160, 255, 255])},
     }
 
     detected = {}
@@ -446,12 +446,12 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
 
         if robot_position:
             rx, ry = robot_position
-            if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 100:
+            if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 150:
                 too_close_to_robot = True
 
         if front_marker:
             fx, fy = front_marker
-            if np.linalg.norm(np.array((cx, cy)) - np.array((fx, fy))) < 100:
+            if np.linalg.norm(np.array((cx, cy)) - np.array((fx, fy))) < 150:
                 too_close_to_robot = True
 
         if ball_positions:
