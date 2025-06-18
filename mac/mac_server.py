@@ -41,8 +41,6 @@ corner_ball = None
 staging_target = None
 last_robot_info = None
 
-corner_stage = 0
-
 barriers = []
 cross = []
 egg = None
@@ -64,7 +62,7 @@ while barrier_call < 8:
         print("Camera error, no frame captured")
         continue
 
-    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     robot_info = detect_robot(frame)
     if robot_info:
         robot_position, front_marker, _ = robot_info
@@ -135,7 +133,7 @@ while True:
     if not ret:
         print("Camera error, no frame captured")
         continue
-    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
 
     robot_info = detect_robot(frame)
 
@@ -218,7 +216,7 @@ while True:
                         robot_info, dummy_target)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
-                        last_command = movement_command
+                        last_command = command
                 else:
                     delivery_stage = 2
 
@@ -368,44 +366,6 @@ while True:
                         (0, 255, 255), 2)
                 
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
-<<<<<<< HEAD
-                    cross_centers = [(x1 + x2) // 2 for (x1, y1, x2, y2) in cross]
-                    median_cross_y = np.median([(y1 + y2) // 2 for (x1, y1, x2, y2) in cross]) if cross else 500
-
-                    if robot_position[1] < median_cross_y:
-                        staging_y = int(median_cross_y) - 120
-                    else:
-                        staging_y = int(median_cross_y) + 120
-
-                    staging_x = best_ball[0]
-                    staging = (staging_x, staging_y, best_ball[2], best_ball[3])
-                    best_ball = staging
-                    staged_balls.append(best_ball)
-                    staged_ball = staging
-                    has_staging = True
-                elif (has_staging and dist_to_ball > 50):
-                    staging = (best_ball[0], robot_position[1], best_ball[2], best_ball[3])
-                    best_ball = staging
-                    staged_balls.append(best_ball)
-                    staged_ball = staging
-                    has_staging = True
-                else:
-                    has_staging = False
-                    staged_ball = None
-
-            # --- START corner-pickup hvis kun hjørnebolde ---
-            field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-            corner_balls = [b for b in ball_positions if is_corner_ball(b, field_bounds)]
-
-            if (len(ball_positions) == len(corner_balls)
-                    and corner_balls
-                    and delivery_stage == 0
-                    and corner_stage == 0):
-                print("Corner balls only – initiating corner-pickup")
-                current_corner = corner_balls[0]
-                corner_stage = 1
-
-=======
                     y = 0
                     x = 0
                     in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER)
@@ -430,7 +390,6 @@ while True:
                         staged_balls.append(best_ball)
                         staged_ball = staging
                 
->>>>>>> origin/davidChefMerge
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
@@ -440,68 +399,6 @@ while True:
                 time.sleep(1)
                 last_command = "medium_backward"
 
-<<<<<<< HEAD
-            # --- CORNER PICKUP STATE MACHINE ---
-            if corner_stage > 0 and current_corner:
-                cx, cy, cr, _ = current_corner
-                if cy < (FIELD_Y_MIN + FIELD_Y_MAX)/2:
-                    staging = (cx, cy - 180, cr, 0)
-                else:
-                    staging = (cx, cy + 180, cr, 0)
-
-                if corner_stage == 1:
-                    # Naviger til staging
-                    movement_command = determine_direction(robot_info, staging)
-                    if np.hypot(fx - staging[0], fy - staging[1]) < 100:
-                        conn.sendall(b"delivery")  # åbner kløer
-                        last_command = "delivery"
-                        corner_stage = 2
-                    elif movement_command != last_command:
-                        conn.sendall(movement_command.encode())
-                        last_command = movement_command
-
-                elif corner_stage == 2:
-                    # Roter korrekt mod bolden (ligesom i delivery_stage 2)
-                    robot_vector = np.array(robot_position) - np.array(front_marker)
-                    desired_vector = np.array([cx, cy]) - np.array(robot_position)
-
-                    dot = np.dot(robot_vector, desired_vector)
-                    mag_r = np.linalg.norm(robot_vector)
-                    mag_d = np.linalg.norm(desired_vector)
-                    cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
-                    angle_diff = np.degrees(np.arccos(cos_theta))
-
-                    print(f"[Corner Stage 2] Angle to target: {angle_diff:.2f}")
-
-                    if angle_diff > 1.5:
-                        robot_3d = np.append(robot_vector, 0)
-                        desired_3d = np.append(desired_vector, 0)
-                        cross_product = np.cross(robot_3d, desired_3d)[2]
-                        if angle_diff > 15:
-                            movement_command = "left"
-                        else:
-                            movement_command = "slow_left"
-                        if movement_command != last_command:
-                            conn.sendall(movement_command.encode())
-                            last_command = movement_command
-                    else:
-                        corner_stage = 3
-
-                elif corner_stage == 3:
-                    # Bak langsomt ind til bolden
-                    if np.hypot(fx - cx, fy - cy) < 60:
-                        conn.sendall(b"continue")  # luk kløer
-                        last_command = "continue"
-                        corner_stage = 0
-                        last_delivery_count -= 1
-                        ball_positions = [b for b in ball_positions if b != current_corner]
-                        current_corner = None
-                    elif last_command != "slow_backward":
-                        conn.sendall(b"slow_backward")
-                        last_command = "slow_backward"
-
-            movement_command = determine_direction(robot_info, best_ball)
-=======
             if corner_stage == 1:
                 print("Corner stage 1")
                 # Naviger til staging
@@ -516,7 +413,6 @@ while True:
                     conn.sendall(movement_command.encode())
                     last_command = movement_command
                 print(f"Command: {movement_command}")
->>>>>>> origin/davidChefMerge
 
             elif corner_stage == 2:
                 # Roter korrekt mod bolden (ligesom i delivery_stage 2)
