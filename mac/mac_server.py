@@ -158,6 +158,11 @@ while True:
     robot_info = detect_robot(frame)
 
     if robot_info:
+        last_known_robot_info = robot_info
+    else:
+        robot_info = last_known_robot_info
+        
+    if robot_info:
         robot_position, front_marker, direction = robot_info
 
         rx, ry = robot_position
