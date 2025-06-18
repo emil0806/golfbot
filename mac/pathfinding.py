@@ -129,25 +129,21 @@ def determine_direction(robot_position, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        return "fast_forward"
+        return "forward"
     elif cross < 0:
-        if angle_difference > 30:
+        if angle_difference > 25:
             return "fast_right"
-        elif angle_difference > 20:
+        elif angle_difference > 15:
             return "right"
-        elif angle_difference > 10:
+        else:
             return "medium_right"
-        else:
-            return "slow_right"
     else:
-        if angle_difference > 30:
+        if angle_difference > 25:
             return "fast_left"
-        elif angle_difference > 20:
+        elif angle_difference > 15:
             return "left"
-        elif angle_difference > 10:
-            return "medium_left"
         else:
-            return "slow_left"
+            return "medium_left"
 
 
 def point_rect_distance(px, py, rect):
@@ -370,41 +366,39 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
     return False
 
 
-def determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def determine_robot_quadrant(front_marker, cross_center):
     fx, fy = front_marker
-    mid_x = (FIELD_X_MIN + FIELD_X_MAX) / 2
-    mid_y = (FIELD_Y_MIN + FIELD_Y_MAX) / 2
+    cx, cy = cross_center
 
-    if fx < mid_x and fy < mid_y:
+    if fx < cx and fy < cy:
         return 1
-    elif fx >= mid_x and fy < mid_y:
+    elif fx >= cx and fy < cy:
         return 2
-    elif fx < mid_x and fy >= mid_y:
+    elif fx < cx and fy >= cy:
         return 3
-    elif fx >= mid_x and fy >= mid_y:
+    elif fx >= cx and fy >= cy:
         return 4
     else:
         return 5
 
 
-def determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def determine_ball_quadrant(best_ball, cross_center):
     bx, by = best_ball[:2]
-    mid_x = (FIELD_X_MIN + FIELD_X_MAX) / 2
-    mid_y = (FIELD_Y_MIN + FIELD_Y_MAX) / 2
+    cx, cy = cross_center
 
-    if bx < mid_x and by < mid_y:
+    if bx < cx and by < cy:
         return 1
-    elif bx >= mid_x and by < mid_y:
+    elif bx >= cx and by < cy:
         return 2
-    elif bx < mid_x and by >= mid_y:
+    elif bx < cx and by >= cy:
         return 3
-    elif bx >= mid_x and by >= mid_y:
+    elif bx >= cx and by >= cy:
         return 4
     else:
         return 5
 
 
-def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER):
     fx, fy = front_marker
     bx, by = best_ball[:2]
 
@@ -416,9 +410,9 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.8) + FIELD_Y_MIN
 
     robot_quadrant = determine_robot_quadrant(
-        front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+        front_marker, CROSS_CENTER)
     ball_quadrant = determine_ball_quadrant(
-        best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+        best_ball, CROSS_CENTER)
 
     if (robot_quadrant == ball_quadrant):
         return front_marker
@@ -429,7 +423,7 @@ def determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     elif ((robot_quadrant == 1 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 1)):
         return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
-        return (fx, by)
+        return (fy, bx)
     elif ((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
         return (x_75, y_50)
     elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
@@ -443,11 +437,13 @@ def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_M
         return False
 
 
-def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, margin=100):
+def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=100):
     fx, fy = front_marker
     bx, by = best_ball[:2]
-    if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+    if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_CENTER):
+        print("cehck")
         return 0
+    print(f"cross: {CROSS_CENTER}")
     if (((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)) and ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin))):
         return 1
     elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
@@ -455,9 +451,9 @@ def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, C
     else:
         return 3
 
-def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    ball_q = determine_ball_quadrant(best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-    robot_q = determine_robot_quadrant(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_CENTER):
+    ball_q = determine_ball_quadrant(best_ball, CROSS_CENTER)
+    robot_q = determine_robot_quadrant(front_marker, CROSS_CENTER)
 
     if ball_q == robot_q:
         return True

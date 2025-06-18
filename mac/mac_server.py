@@ -39,6 +39,7 @@ corner_stage = 0
 corner_timer = 0
 corner_ball = None
 staging_target = None
+last_robot_info = None
 
 barriers = []
 cross = []
@@ -53,6 +54,7 @@ CROSS_X_MIN = None
 CROSS_X_MAX = None
 CROSS_Y_MIN = None
 CROSS_Y_MAX = None
+CROSS_CENTER = None
 
 while barrier_call < 8:
     ret, frame = cap.read()
@@ -120,6 +122,10 @@ if cross:
     flat_cross = [c for sublist in cross for c in sublist]
     CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
         flat_cross)
+    CROSS_CENTER = (
+            (CROSS_X_MIN + CROSS_X_MAX) // 2,
+            (CROSS_Y_MIN + CROSS_Y_MAX) // 2
+        )
     cross = flat_cross
 
 while True:
@@ -136,6 +142,8 @@ while True:
 
         rx, ry = robot_position
         fx, fy = front_marker
+        cm_x = (fx + rx) / 2
+        cm_y = (fy + ry) / 2
 
         current_time = time.time()
 
@@ -193,10 +201,11 @@ while True:
 
                         staging = (x, y, dummy_target[2], dummy_target[3])
                         staging_dist = np.linalg.norm(
-                            np.array(staging[:2]) - np.array(front_marker))
+                            np.array(staging[:2]) - np.array((cm_x, cm_y)))
                         
-                        if (staging_dist < 50):
+                        if (staging_dist < 30):
                             at_blocked_staging = True
+                            has_staging = False
                         
                         if not at_blocked_staging:                        
                             dummy_target = staging  
@@ -207,7 +216,7 @@ while True:
                         robot_info, dummy_target)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
-                        last_command = command
+                        last_command = movement_command
                 else:
                     delivery_stage = 2
 
@@ -359,7 +368,7 @@ while True:
                 if barrier_blocks_path(front_marker, best_ball, egg, cross):
                     y = 0
                     x = 0
-                    in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
+                    in_line = is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER)
                     if (in_line == 1):
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
@@ -367,21 +376,20 @@ while True:
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
                     elif(in_line == 3):
-                        x, y = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+                        x, y = determine_staging_point(front_marker, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER)
                     
                     staging = (x, y, best_ball[2], best_ball[3])
                     staging_dist = np.linalg.norm(
-                        np.array(staging[:2]) - np.array(front_marker))
+                        np.array(staging[:2]) - np.array((cm_x, cm_y)))
                     
-                    if (staging_dist < 40):
+                    if (staging_dist < 30):
                         at_blocked_staging = True
                     
                     if not at_blocked_staging:                        
                         best_ball = staging  
                         staged_balls.append(best_ball)
                         staged_ball = staging
-           
-
+                
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"
                 conn.sendall(movement_command.encode())
