@@ -110,10 +110,10 @@ if barriers:
 
     if len(xs) >= 4 and len(ys) >= 4:
         # Sorter og fjern outliers vha. percentil
-        FIELD_X_MIN = int(np.percentile(xs, 10))
-        FIELD_X_MAX = int(np.percentile(xs, 90))
-        FIELD_Y_MIN = int(np.percentile(ys, 10))
-        FIELD_Y_MAX = int(np.percentile(ys, 90))
+        FIELD_X_MIN = int(np.percentile(xs, 5))
+        FIELD_X_MAX = int(np.percentile(xs, 95))
+        FIELD_Y_MIN = int(np.percentile(ys, 5))
+        FIELD_Y_MAX = int(np.percentile(ys, 95))
 
     # ----------  BEREGN HOMOGRAFI  ---------------
     PIX_CORNERS = np.float32([

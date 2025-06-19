@@ -350,7 +350,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     # Rød farve (HSV wraparound)
     lower_red1 = np.array([0, 50, 40])
     upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 50, 40])
+    lower_red2 = np.array([170, 50, 40])
     upper_red2 = np.array([180, 255, 255])
 
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
@@ -368,11 +368,21 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
 
     barriers = []
     if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cx = (x1 + x2) // 2
-            cy = (y1 + y2) // 2
-            barriers.append(((x1, y1, x2, y2), (cx, cy)))
+        pts = lines.reshape(-1, 4)        # (x1, y1, x2, y2)
+        xs  = np.concatenate([pts[:, 0], pts[:, 2]])
+        ys  = np.concatenate([pts[:, 1], pts[:, 3]])
+
+        if xs.size and ys.size:
+            min_x, max_x = int(xs.min()), int(xs.max())
+            min_y, max_y = int(ys.min()), int(ys.max())
+
+
+            barriers = [
+                ((min_x, min_y, min_x, max_y), (min_x, (min_y + max_y) // 2)),      # venstre
+                ((max_x, min_y, max_x, max_y), (max_x, (min_y + max_y) // 2)),      # højre
+                ((min_x, min_y, max_x, min_y), ((min_x + max_x) // 2, min_y)),      # top
+                ((min_x, max_y, max_x, max_y), ((min_x + max_x) // 2, max_y))       # bund
+            ]
 
     # Debug
     cv2.imshow("Barrier Mask", mask)

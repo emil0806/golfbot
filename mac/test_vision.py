@@ -69,10 +69,10 @@ if barriers:
 
     if len(xs) >= 4 and len(ys) >= 4:
         # Sorter og fjern outliers vha. percentil
-        FIELD_X_MIN = int(np.percentile(xs, 10))
-        FIELD_X_MAX = int(np.percentile(xs, 90))
-        FIELD_Y_MIN = int(np.percentile(ys, 10))
-        FIELD_Y_MAX = int(np.percentile(ys, 90))
+        FIELD_X_MIN = int(np.percentile(xs, 5))
+        FIELD_X_MAX = int(np.percentile(xs, 95))
+        FIELD_Y_MIN = int(np.percentile(ys, 5))
+        FIELD_Y_MAX = int(np.percentile(ys, 95))
 
     print(f"FIELD_X_MIN {FIELD_X_MIN}, FIELD_X_MAX {FIELD_X_MAX}, FIELD_Y_MIN {FIELD_Y_MIN}, FIELD_Y_MAX {FIELD_Y_MAX}")
 else:
@@ -113,7 +113,7 @@ while True:
         print("Error: Could not capture image")
         continue
 
-    frame = cv2.convertScaleAbs(frame, alpha=1.0, beta=0)
+    frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     
     robot_info = detect_robot(frame)
         
