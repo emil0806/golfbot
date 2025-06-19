@@ -134,7 +134,7 @@ def detect_balls(frame, egg, robot_position, front_marker):
             is_white = (s < 100 and v > 170)
 
             # Tjek for orange bold
-            is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
+            is_orange = (10 <= h <= 40 and s >= 50 and v >= 150)
             is_inside_egg = False
             if egg:
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
@@ -204,6 +204,56 @@ def detect_robot(frame):
 
     for label, mask in masks.items():
         cv2.imshow(f"{label} mask", mask)
+
+    # HoughCircles fallback hvis nogle mærker mangler
+    missing_labels = [label for label in color_ranges if label not in detected]
+
+    # Brug kun hue-rangering hvis vi mangler alle fire
+    if len(missing_labels) > 0:
+        gray = cv2.cvtColor(frame_normalized, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20,
+                                   param1=50, param2=30, minRadius=15, maxRadius=30)
+
+        if circles is not None:
+            debug_frame = frame.copy()
+            candidates = []
+
+            for (x, y, r) in np.round(circles[0, :]).astype("int"):
+                if r <= 0:
+                    continue
+
+                # Maske til at isolere farven i cirklen
+                mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
+                cv2.circle(mask, (x, y), int(r), 255, -1)
+                masked_hsv = cv2.bitwise_and(hsv, hsv, mask=mask)
+                h, s, v = cv2.mean(masked_hsv, mask=mask)[:3]
+
+                candidates.append({
+                    "pos": (x, y),
+                    "r": r,
+                    "hue": h
+                })
+                cv2.circle(debug_frame, (x, y), int(r), (200, 200, 200), 1)
+
+            # Kun fortsæt hvis vi fandt 4 cirkler
+            if len(candidates) == 4:
+                candidates.sort(key=lambda c: c["hue"])  # stigende hue
+
+                label_order = ["front_right", "front_left", "back_right", "back_left"]
+                for i, label in enumerate(label_order):
+                    pos = candidates[i]["pos"]
+                    r = candidates[i]["r"]
+                    color = color_ranges[label]["color"]
+
+                    detected[label] = pos
+                    cv2.circle(frame, pos, int(r), color, 2)
+                    cv2.putText(frame, f"{label}*", (pos[0] - 20, pos[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            cv2.imshow("HoughCircles Debug", debug_frame)
+
+
 
     # Brug kendte afstande
     width = 90
