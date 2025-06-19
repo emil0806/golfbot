@@ -20,10 +20,10 @@ barriers = []
 cross = []
 egg = None
 
-FIELD_X_MIN = None
-FIELD_X_MAX = None
-FIELD_Y_MIN = None
-FIELD_Y_MAX = None
+FIELD_X_MIN = 251
+FIELD_X_MAX = 1585
+FIELD_Y_MIN = 66
+FIELD_Y_MAX = 1042
 
 CROSS_X_MIN = None
 CROSS_X_MAX = None
@@ -45,45 +45,40 @@ while barrier_call < 5:
         ball_positions = detect_balls(frame, egg,
                                        robot_position, front_marker)
 
-        bar = detect_barriers(frame, robot_position, ball_positions)
-        barriers.append(bar)
 
         cross_line = detect_cross(frame,
                                   robot_position,
                                   front_marker,
                                   ball_positions,
-                                  bar)
+                                  FIELD_X_MIN,
+                                  FIELD_X_MAX,
+                                  FIELD_Y_MIN,
+                                  FIELD_Y_MAX)
         cross.append(cross_line)
     barrier_call += 1
 
-if barriers:
-    flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
-    barriers = flat_barriers
-else:
-    barriers = []
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-        1], 0, frame.shape[0]
+
     
-    # Homografi til test  (samme logik som i mac_server.py)
-    PIX_CORNERS = np.float32([
-        [FIELD_X_MIN, FIELD_Y_MIN],
-        [FIELD_X_MAX, FIELD_Y_MIN],
-        [FIELD_X_MAX, FIELD_Y_MAX],
-        [FIELD_X_MIN, FIELD_Y_MAX]
-    ])
-    FIELD_W, FIELD_H = 1800, 1200
-    WORLD_CORNERS = np.float32([
-        [0,        0],
-        [FIELD_W,  0],
-        [FIELD_W,  FIELD_H],
-        [0,        FIELD_H]
-    ])
-    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
-    set_homography(H)
+# Homografi til test  (samme logik som i mac_server.py)
+PIX_CORNERS = np.float32([
+    [FIELD_X_MIN, FIELD_Y_MIN],
+    [FIELD_X_MAX, FIELD_Y_MIN],
+    [FIELD_X_MAX, FIELD_Y_MAX],
+    [FIELD_X_MIN, FIELD_Y_MAX]
+])
+FIELD_W, FIELD_H = 1800, 1200
+WORLD_CORNERS = np.float32([
+    [0,        0],
+    [FIELD_W,  0],
+    [FIELD_W,  FIELD_H],
+    [0,        FIELD_H]
+])
+H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+set_homography(H)
 
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
+    print(f"cross: {flat_cross}")
     CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
         flat_cross)
     CROSS_CENTER = (

@@ -42,15 +42,16 @@ corner_ball = None
 staging_target = None
 last_robot_info = None
 staged_ball = None
+last_robot_info = None
 
 barriers = []
 cross = []
 egg = None
 
-FIELD_X_MIN = None
-FIELD_X_MAX = None
-FIELD_Y_MIN = None
-FIELD_Y_MAX = None
+FIELD_X_MIN = 251
+FIELD_X_MAX = 1585
+FIELD_Y_MIN = 66
+FIELD_Y_MAX = 1042
 
 CROSS_X_MIN = None
 CROSS_X_MAX = None
@@ -66,6 +67,12 @@ while barrier_call < 8:
 
     frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
     robot_info = detect_robot(frame)
+
+    if robot_info:
+        last_robot_info = robot_info
+    else:
+        robot_info = last_robot_info
+
     if robot_info:
         robot_position, front_marker, _ = robot_info
     else:
@@ -76,49 +83,38 @@ while barrier_call < 8:
         robot_position, front_marker, direction = robot_info
         egg = detect_egg(frame, robot_position, front_marker)
 
-        bar = detect_barriers(frame, robot_position, ball_positions)
-        bar = filter_barriers_inside_field(bar, frame.shape)
-        barriers.append(bar)
-        cross.append(
-            detect_cross(frame,
-                         robot_position,
-                         front_marker,
-                         ball_positions,
-                         bar)
-        )
+        cross_line = detect_cross(frame,
+                                  robot_position,
+                                  front_marker,
+                                  ball_positions,
+                                  FIELD_X_MIN,
+                                  FIELD_X_MAX,
+                                  FIELD_Y_MIN,
+                                  FIELD_Y_MAX)
+        cross.append(cross_line)
     barrier_call += 1
 
-if barriers:
-    flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-        flat_barriers)
-    
-    barriers = flat_barriers
 
-    # ----------  BEREGN HOMOGRAFI  ---------------
-    PIX_CORNERS = np.float32([
-        [FIELD_X_MIN, FIELD_Y_MIN],   # top-left
-        [FIELD_X_MAX, FIELD_Y_MIN],   # top-right
-        [FIELD_X_MAX, FIELD_Y_MAX],   # bottom-right
-        [FIELD_X_MIN, FIELD_Y_MAX]    # bottom-left
-    ])
+# ----------  BEREGN HOMOGRAFI  ---------------
+PIX_CORNERS = np.float32([
+    [FIELD_X_MIN, FIELD_Y_MIN],   # top-left
+    [FIELD_X_MAX, FIELD_Y_MIN],   # top-right
+    [FIELD_X_MAX, FIELD_Y_MAX],   # bottom-right
+    [FIELD_X_MIN, FIELD_Y_MAX]    # bottom-left
+])
 
-    # Kendt faktisk bane-størrelse i mm  (tilpas hvis nødvendigt)
-    FIELD_W, FIELD_H = 1800, 1200
-    WORLD_CORNERS = np.float32([
-        [0,        0],
-        [FIELD_W,  0],
-        [FIELD_W,  FIELD_H],
-        [0,        FIELD_H]
-    ])
+# Kendt faktisk bane-størrelse i mm  (tilpas hvis nødvendigt)
+FIELD_W, FIELD_H = 1800, 1200
+WORLD_CORNERS = np.float32([
+    [0,        0],
+    [FIELD_W,  0],
+    [FIELD_W,  FIELD_H],
+    [0,        FIELD_H]
+])
 
-    H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
-    set_homography(H)                    # gem matrixen globalt i pathfinding.py
+H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
+set_homography(H)                    # gem matrixen globalt i pathfinding.py
 
-else:
-    barriers = []
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-        1], 0, frame.shape[0]
 
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]
@@ -138,6 +134,11 @@ while True:
     frame = cv2.convertScaleAbs(frame, alpha=0.8, beta=0)
 
     robot_info = detect_robot(frame)
+
+    if robot_info:
+        last_robot_info = robot_info
+    else:
+        robot_info = last_robot_info
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
@@ -170,7 +171,7 @@ while True:
             prev_ball_count = len(ball_positions)
 
         ###   Delivery   ###
-        if (len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions)):
+        if ((len(ball_positions) in [0, 4, 8] and last_delivery_count != len(ball_positions))):
             if delivery_stage == 0:
                 print("Initiating delivery routine...")
                 delivery_stage = 1
@@ -213,7 +214,7 @@ while True:
                             dummy_target = staging  
                             staged_balls.append(dummy_target)
                     movement_command = determine_direction(
-                        robot_info, dummy_target)
+                        robot_info, dummy_target, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
                     if movement_command != last_command:
                         conn.sendall(movement_command.encode())
                         last_command = movement_command
@@ -345,7 +346,7 @@ while True:
                     cos_theta = max(-1, min(1, dot / (mag_r * mag_b + 1e-6)))
                     angle_diff = np.degrees(np.arccos(cos_theta))
 
-                    if (staging_dist < 100):
+                    if (staging_dist < 50):
                         at_staging = True
 
                     if not at_staging:
@@ -416,7 +417,7 @@ while True:
             if corner_stage == 1:
                 print("Corner stage 1")
                 # Naviger til staging
-                movement_command = determine_direction(robot_info, staging)
+                movement_command = determine_direction(robot_info, staging, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
                 if np.hypot(fx - staging[0], fy - staging[1]) < 50:
                     command = "delivery"
                     conn.sendall(command.encode())
@@ -516,7 +517,7 @@ while True:
                         last_command = "slow_backward"
                         print("back")
             else:
-                movement_command = determine_direction(robot_info, best_ball)
+                movement_command = determine_direction(robot_info, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
 
                 # Tilføj slow logik - kun forward, left og right bliver slow
                 ### DETTE SKAL IMPLEMENTERES ###

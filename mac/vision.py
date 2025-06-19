@@ -406,8 +406,12 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     else:
         return barriers
 
-
-def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, barriers=None):
+def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, 
+                FIELD_X_MIN = None, 
+                FIELD_X_MAX = None,
+                FIELD_Y_MIN = None,
+                FIELD_Y_MAX = None):    
+    
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -460,20 +464,15 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
                     too_close_to_ball = True
                     break
 
-        if not too_close_to_robot and not too_close_to_ball:
-            cross_lines.append((x1, y1, x2, y2))
+        too_close_to_field = (
+        cx < FIELD_X_MIN + 50 or
+        cx > FIELD_X_MAX - 50 or
+        cy < FIELD_Y_MIN + 50 or
+        cy > FIELD_Y_MAX - 50
+        )
 
-    if barriers:
-        margin = 100 
-        FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-        barriers)
-        cross_lines = [
-            (x1, y1, x2, y2) for (x1, y1, x2, y2) in cross_lines
-            if (
-                FIELD_X_MIN + margin < (x1 + x2) // 2 < FIELD_X_MAX - margin and
-                FIELD_Y_MIN + margin < (y1 + y2) // 2 < FIELD_Y_MAX - margin
-            )
-        ]
+        if not too_close_to_robot and not too_close_to_ball and not too_close_to_field:
+            cross_lines.append((x1, y1, x2, y2))
 
     # Debug mask
     cv2.imshow("Cross Mask", mask)

@@ -98,14 +98,16 @@ def find_best_ball(ball_positions, robot_position, front_marker):
     return new_best_ball
 
 
-def determine_direction(robot_position, ball_position):
-    if not robot_position or not ball_position:
+def determine_direction(robot_info, ball_position, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    if not robot_info or not ball_position:
         return "stop"
 
+    robot_position, front_marker, _ = robot_info
     # ------- 1. pixel → world (gulvplan) ----------
     bx, by = pix2world(ball_position[:2])
 
-    (rx_p, ry_p), (fx_p, fy_p), _ = robot_position
+    (rx_p, ry_p) = robot_position
+    (fx_p, fy_p) = front_marker
     rx_w, ry_w = pix2world((rx_p, ry_p))
     fx_w, fy_w = pix2world((fx_p, fy_p))
 
@@ -129,7 +131,10 @@ def determine_direction(robot_position, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        return "forward"
+        if slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+            return "slow_forward"
+        else: 
+            return "forward"    
     elif cross < 0:
         if angle_difference > 25:
             return "fast_right"
@@ -365,6 +370,18 @@ def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_
         return True
     return False
 
+def slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    fx, fy = front_marker
+
+    if FIELD_X_MIN + 200 > fx:
+        return True
+    if FIELD_X_MAX - 200 < fx:
+        return True
+    if FIELD_Y_MIN + 200 > fy:
+        return True
+    if FIELD_Y_MAX - 200 < fy:
+        return True
+    return False
 
 def determine_robot_quadrant(center_robot, cross_center):
     fx, fy = center_robot
