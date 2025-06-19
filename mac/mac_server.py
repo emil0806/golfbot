@@ -1,3 +1,4 @@
+from collections import deque
 import socket
 import time
 import cv2
@@ -6,7 +7,7 @@ from pathfinding import (determine_direction, find_best_ball, sort_balls_by_dist
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field, stabilize_detections
 from config import EV3_IP, PORT
 import time
 import traceback
@@ -47,14 +48,16 @@ delivery_candidate = None
 consecutive_delivery_frames = 0
 delivery_active = False
 
+ball_history = deque(maxlen=5)  # gem de sidste 5 frames
+
 barriers = []
 cross = []
 egg = None
 
-FIELD_X_MIN = 251
-FIELD_X_MAX = 1585
-FIELD_Y_MIN = 66
-FIELD_Y_MAX = 1042
+FIELD_X_MIN = 260
+FIELD_X_MAX = 1614
+FIELD_Y_MIN = 62
+FIELD_Y_MAX = 1040
 
 CROSS_X_MIN = None
 CROSS_X_MAX = None
@@ -81,6 +84,18 @@ while barrier_call < 8:
     else:
         robot_position = front_marker = None
     ball_positions = detect_balls(frame, egg, robot_position, front_marker)
+
+        # 1. Find aktuelle bolde
+    current_balls = detect_balls(frame, egg, robot_position, front_marker)
+
+    # 2. Stabiliser med historik
+    stable_balls = stabilize_detections(current_balls, ball_history)
+
+    # 3. Opdatér historik
+    ball_history.append(current_balls)
+
+    # 4. Brug `stable_balls` i resten af din kode i stedet for `current_balls`
+    ball_positions = stable_balls
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
@@ -614,6 +629,12 @@ while True:
                 cv2.line(frame, (int(x), int(FIELD_Y_MIN)), (int(x), int(FIELD_Y_MAX)), (255, 255, 0), 2)
             for y in [y1, y2, y3]:
                 cv2.line(frame, (int(FIELD_X_MIN), int(y)), (int(FIELD_X_MAX), int(y)), (255, 255, 0), 2)
+
+            for x, y, r, color in stable_balls:
+                color_bgr = (0, 140, 255) if color == 1 else (255, 255, 255)  # Orange eller hvid
+                cv2.circle(frame, (x, y), r, color_bgr, 2)
+            cv2.imshow("Stabilized Balls", frame)
+
 
 
         cv2.imshow("Ball & Robot Detection", frame)
