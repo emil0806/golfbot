@@ -21,6 +21,7 @@ MAX_MISS   = 2.0
 
 egg_location = []
 
+
 def detect_balls(frame, egg, robot_position, front_marker):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -152,195 +153,36 @@ def detect_balls(frame, egg, robot_position, front_marker):
 
     return ball_positions
 
-def detect_robot(frame):
-    global last_front, last_back, last_seen
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+aruco_params = cv2.aruco.DetectorParameters()
 
-    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l_clahe = clahe.apply(l)
-    lab_clahe = cv2.merge((l_clahe, a, b))
-    frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-    frame_normalized = np.zeros_like(frame_clahe)
-    cv2.normalize(frame_clahe, frame_normalized, 0, 255, cv2.NORM_MINMAX)
+def detect_robot(frame, target_id=42):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    corners, ids, _ = detector.detectMarkers(gray)
 
-    hsv = cv2.cvtColor(frame_normalized, cv2.COLOR_BGR2HSV)
-
-    kernel = np.ones((5, 5), np.uint8)
-
-    color_ranges = {
-        "front_left":  {"color": (255, 255, 255), "lower": np.array([85, 0, 0]),  "upper": np.array([100, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([75, 0, 0]),  "upper": np.array([90, 255, 255])},
-        "back_left":   {"color": (255, 0, 255),    "lower": np.array([150, 0, 0]), "upper": np.array([165, 255, 255])},
-        "back_right":  {"color": (255, 0, 0),      "lower": np.array([115, 0, 0]), "upper": np.array([130, 255, 255])},
-    }
-
-    detected = {}
-    masks = {}
-
-    for label, props in color_ranges.items():
-        mask = cv2.inRange(hsv, props["lower"], props["upper"])
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        masks[label] = mask
-
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in contours:
-            (x, y), radius = cv2.minEnclosingCircle(cnt)
-            x, y, radius = int(x), int(y), int(radius)
-            area = cv2.contourArea(cnt)
-            perimeter = cv2.arcLength(cnt, True)
-            if perimeter == 0:
-                continue
-            circularity = 4 * np.pi * (area / (perimeter ** 2 + 1e-5))
-            x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(cnt)
-            aspect_ratio = float(w_rect) / h_rect
-            if 0.7 < circularity < 1.3 and 0.7 < aspect_ratio < 1.4 and area > 500:
-                center = (x, y)
-                detected[label] = center
-                cv2.circle(frame, center, radius, props["color"], 2)
-                cv2.putText(frame, label, (x - 20, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, props["color"], 2)
-                break
-
-    for label, mask in masks.items():
-        cv2.imshow(f"{label} mask", mask)
-
-    # Brug kendte afstande
-    width = 90
-    length = 115
-
-    positions = detected.keys()
-    front, back = None, None
-    direction_vector = None
-
-    if "front_left" in positions and "front_right" in positions:
-        front = tuple(np.mean([detected["front_left"], detected["front_right"]], axis=0).astype(int))
-
-    if "back_left" in positions and "back_right" in positions:
-        back = tuple(np.mean([detected["back_left"], detected["back_right"]], axis=0).astype(int))
-
-    if "front_left" in positions and "back_left" in positions and (front is None or back is None):
-        left_front = np.array(detected["front_left"])
-        left_back = np.array(detected["back_left"])
-        v = left_front - left_back
-        direction = v / (np.linalg.norm(v) + 1e-5)
-        center = (left_front + left_back) / 2
-        # Vinkelret vektor
-        perpendicular = np.array([-direction[1], direction[0]])
-        center = center + perpendicular * (width / 2)  # flyt ind mod midten
-        front = tuple((center + length/2 * direction).astype(int))
-        back = tuple((center - length/2 * direction).astype(int))
-
-    if "front_right" in positions and "back_right" in positions and (front is None or back is None):
-        right_front = np.array(detected["front_right"])
-        right_back = np.array(detected["back_right"])
-        v = right_front - right_back
-        direction = v / (np.linalg.norm(v) + 1e-5)
-        center = (right_front + right_back) / 2
-        # Vinkelret vektor
-        perpendicular = np.array([direction[1], -direction[0]])
-        center = center + perpendicular * (width / 2)  # flyt ind mod midten
-        front = tuple((center + length/2 * direction).astype(int))
-        back = tuple((center - length/2 * direction).astype(int))
-
-
-    if "front_left" in positions and "back_right" in positions and (front is None or back is None):
-        front_pt = np.array(detected["front_left"], dtype=np.float32)
-        back_pt  = np.array(detected["back_right"], dtype=np.float32)
-        center = (front_pt + back_pt) / 2
-        direction = front_pt - back_pt
-        direction /= (np.linalg.norm(direction) + 1e-5)
-
-        length_dir = direction
-        width_dir = np.array([-length_dir[1], length_dir[0]])
-
-        center_front = center + width_dir * (width / 2)
-        center_back = center - width_dir * (width / 2)
-
-        front = tuple((center_front + length_dir * (length / 2)).astype(int))
-        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
-
-
-    if "front_right" in positions and "back_left" in positions and (front is None or back is None):
-        front_pt = np.array(detected["front_right"], dtype=np.float32)
-        back_pt  = np.array(detected["back_left"], dtype=np.float32)
-        center = (front_pt + back_pt) / 2
-        direction = front_pt - back_pt
-        direction /= (np.linalg.norm(direction) + 1e-5)
-
-        length_dir = direction
-        width_dir = np.array([-length_dir[1], length_dir[0]])
-
-        center_front = center - width_dir * (width / 2)
-        center_back = center + width_dir * (width / 2)
-
-        front = tuple((center_front + length_dir * (length / 2)).astype(int))
-        back  = tuple((center_back - length_dir * (length / 2)).astype(int))
-
-    if "front_left" in positions and "front_right" in positions and (front is None or back is None):
-        f_left = np.array(detected["front_left"], dtype=np.float32)
-        f_right = np.array(detected["front_right"], dtype=np.float32)
-        front_center = (f_left + f_right) / 2
-
-        # Vektor fra højre til venstre = bredderetning
-        width_vec = f_left - f_right
-        width_dir = width_vec / (np.linalg.norm(width_vec) + 1e-5)
-
-        # Længderetning er vinkelret
-        length_dir = np.array([width_dir[1], -width_dir[0]])
-
-        front = tuple((front_center).astype(int))
-        back = tuple((front_center + length * length_dir).astype(int))
-
-    if "back_left" in positions and "back_right" in positions and (front is None or back is None):
-        b_left = np.array(detected["back_left"], dtype=np.float32)
-        b_right = np.array(detected["back_right"], dtype=np.float32)
-        back_center = (b_left + b_right) / 2
-
-        width_vec = b_left - b_right
-        width_dir = width_vec / (np.linalg.norm(width_vec) + 1e-5)
-        length_dir = np.array([width_dir[1], -width_dir[0]])
-
-        back = tuple((back_center).astype(int))
-        front = tuple((back_center - length * length_dir).astype(int))
-
-    t_now = time.time()
-
-    def _step(kf, meas, last):
-        if meas is not None:                 # har vi en måling?
-            kf.correct(np.float32([[meas[0]],[meas[1]]]))
-            last = meas
-        pred = kf.predict()                  # ny forudsigelse
-        return (int(pred[0]),int(pred[1])) if meas is None else meas, last
-
-    front, last_front = _step(front_kf, front, last_front)
-    back , last_back  = _step(back_kf , back , last_back)
-
-    if front and back:
-        d = np.linalg.norm(np.subtract(front,back))
-        if 85 <= d <= 120: 
-            last_seen = t_now
-        else:         
-            front = back = None
-
-    if front is None and back is None and (t_now-last_seen) > MAX_MISS:
-        return None 
-
-    front = front or last_front
-    back  = back  or last_back
-    if front is None or back is None:
+    if ids is None:
         return None
-    
-    if front is not None and back is not None:
-        direction_vector = (front[0] - back[0], front[1] - back[1])
-        cv2.arrowedLine(frame, back, front, (255, 255, 255), 2)
 
-    cv2.imshow("Robot Debug", frame)
+    for i, marker_id in enumerate(ids.flatten()):
+        if marker_id == target_id:
+            c = corners[i][0]  # 4 hjørner i rækkefølge
 
-    if front is not None and back is not None:
-        return back, front, direction_vector
-    else:
-        return None
+            # Midtpunkt
+            center = np.mean(c, axis=0).astype(int)
+
+            # Brug vektor mellem to hjørner som "retning"
+            front_pt = ((c[0] + c[1]) / 2).astype(int)
+            back_pt = ((c[2] + c[3]) / 2).astype(int)
+            direction = front_pt - back_pt
+
+            # Tegn på billedet
+            cv2.circle(frame, center, 5, (255, 0, 0), -1)
+            cv2.arrowedLine(frame, tuple(back_pt), tuple(front_pt), (0, 255, 0), 2)
+
+            return tuple(back_pt), tuple(front_pt), tuple(direction)
+
+    return None
 
 
 def detect_barriers(frame, robot_position=None, ball_positions=None):

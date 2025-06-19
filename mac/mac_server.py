@@ -6,7 +6,7 @@ from pathfinding import (determine_direction, find_best_ball, sort_balls_by_dist
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
+from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
 from config import EV3_IP, PORT
 import time
 
