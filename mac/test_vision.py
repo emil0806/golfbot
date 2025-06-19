@@ -5,7 +5,6 @@ import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, stabilize_detections
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
-    egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
 
 cap = cv2.VideoCapture(0)
@@ -48,15 +47,15 @@ while barrier_call < 5:
         robot_info = last_robot_info
 
     if robot_info:
-        robot_position, front_marker, direction = robot_info
+        front_marker, center_marker, back_marker, _ = robot_info
 
-        egg = detect_egg(frame, robot_position, front_marker)
+        egg = detect_egg(frame, back_marker, front_marker)
         ball_positions = detect_balls(frame, egg,
-                                       robot_position, front_marker)
+                                       back_marker, front_marker)
 
 
         cross_line = detect_cross(frame,
-                                  robot_position,
+                                  back_marker,
                                   front_marker,
                                   ball_positions,
                                   FIELD_X_MIN,
@@ -113,18 +112,18 @@ while True:
     ball_positions = None
 
     if robot_info:
-        robot_position, front_marker, direction = robot_info
+        front_marker, center_marker, back_marker, _ = robot_info
 
-        egg = detect_egg(frame, robot_position, front_marker)
+        egg = detect_egg(frame, back_marker, front_marker)
 
-        rx, ry = robot_position
+        rx, ry = back_marker
         fx, fy = front_marker
         cm_x = (fx + rx) // 2
         cm_y = (fy + ry) // 2
         center_robot = (cm_x, cm_y)
 
             # 1. Find aktuelle bolde
-        current_balls = detect_balls(frame, egg, robot_position, front_marker)
+        current_balls = detect_balls(frame, egg, back_marker, front_marker)
 
         # 2. Stabiliser med historik
         stable_balls = stabilize_detections(current_balls, ball_history)
@@ -155,14 +154,14 @@ while True:
             if is_corner_ball(ball, field_bounds):
                 staged_balls.append((create_staging_point_corner(ball, field_bounds)))
             elif is_edge_ball(ball, field_bounds):
-                staged_balls.append((create_staging_point_edge(ball, field_bounds)))
+                staged_balls.append((create_staging_point_edge(ball)))
 
         if best_ball:
             # Hvis best_ball er edge eller corner
             if is_corner_ball(best_ball, field_bounds):
                 staging = create_staging_point_corner(best_ball, field_bounds)
             elif is_edge_ball(best_ball, field_bounds):
-                staging = create_staging_point_edge(best_ball, field_bounds)
+                staging = create_staging_point_edge(best_ball)
             else:
                 staging = None
 
@@ -173,9 +172,9 @@ while True:
                     np.array(best_ball[:2]) - np.array(front_marker))
 
                 robot_vector = np.array(front_marker) - \
-                    np.array(robot_position)
+                    np.array(back_marker)
                 ball_vector = np.array(
-                    best_ball[:2]) - np.array(robot_position)
+                    best_ball[:2]) - np.array(back_marker)
 
                 dot = np.dot(robot_vector, ball_vector)
                 mag_r = np.linalg.norm(robot_vector)
@@ -188,7 +187,7 @@ while True:
                     best_ball = staging
 
             dist_to_ball = 0 if staged_ball is None else np.linalg.norm(
-                np.array(staged_ball[:2]) - np.array(robot_position))
+                np.array(staged_ball[:2]) - np.array(back_marker))
             line1, line2 = draw_lines(front_marker, best_ball, egg, cross)
 
             # Tegn linje 1
@@ -268,7 +267,7 @@ while True:
 
     # --- Tegn robot ---
     if robot_info:
-        (rx, ry), (fx, fy), _ = robot_info
+        (fx, fy),(cx, cy), (rx, ry), _ = robot_info
         cv2.circle(frame, (rx, ry), 10, (255, 0, 0), 2)
         cv2.putText(frame, "Robot", (rx - 20, ry - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
@@ -299,12 +298,12 @@ while True:
             cv2.putText(frame, "Egg", (x - 20, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
             
-    x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds(g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX)
         
-    for x in [x1, x2, x3]:
-        cv2.line(frame, (int(x), int(FIELD_Y_MIN)), (int(x), int(FIELD_Y_MAX)), (255, 255, 0), 2)
-    for y in [y1, y2, y3]:
-        cv2.line(frame, (int(FIELD_X_MIN), int(y)), (int(FIELD_X_MAX), int(y)), (255, 255, 0), 2)
+    for x in [x1, x2, x3, x4, x5, x6]:
+        cv2.line(frame, (int(x), int(g.FIELD_Y_MIN)), (int(x), int(g.FIELD_Y_MAX)), (255, 255, 0), 2)
+    for y in [y1, y2, y3. y4, y5, y6]:
+        cv2.line(frame, (int(g.FIELD_X_MIN), int(y)), (int(g.FIELD_X_MAX), int(y)), (255, 255, 0), 2)
 
     if stable_balls:
         for x, y, r, color in stable_balls:

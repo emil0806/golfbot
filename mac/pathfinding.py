@@ -1,6 +1,8 @@
+from collections import deque
 import math
 import numpy as np
 import cv2
+import globals_config as g
 
 
 # =============== 3-D KORREKTION ====================
@@ -71,13 +73,13 @@ def sort_balls_by_distance(ball_positions, front_marker):
     return sorted_balls
 
 
-def find_best_ball(ball_positions, robot_position, front_marker):
+def find_best_ball(ball_positions, back_marker, front_marker):
     global previous_best_ball
 
-    if not ball_positions or not robot_position:
+    if not ball_positions or not back_marker:
         return None
 
-    (rx, ry) = robot_position
+    (rx, ry) = back_marker
     (fx, fy) = front_marker
 
     for i, ball in enumerate(ball_positions):
@@ -98,15 +100,15 @@ def find_best_ball(ball_positions, robot_position, front_marker):
     return new_best_ball
 
 
-def determine_direction(robot_info, ball_position, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def determine_direction(robot_info, ball_position):
     if not robot_info or not ball_position:
         return "stop"
 
-    robot_position, front_marker, _ = robot_info
+    front_marker, center_marker, back_marker, _ = robot_info
     # ------- 1. pixel → world (gulvplan) ----------
     bx, by = pix2world(ball_position[:2])
 
-    (rx_p, ry_p) = robot_position
+    (rx_p, ry_p) = back_marker
     (fx_p, fy_p) = front_marker
     rx_w, ry_w = pix2world((rx_p, ry_p))
     fx_w, fy_w = pix2world((fx_p, fy_p))
@@ -131,7 +133,7 @@ def determine_direction(robot_info, ball_position, FIELD_X_MIN, FIELD_X_MAX, FIE
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        if slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+        if slow_down_close_to_barrier(front_marker, g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX):
             return "slow_forward"
         else: 
             return "forward"    
@@ -170,15 +172,6 @@ def point_rect_distance(px, py, rect):
     return math.hypot(dx, dy)
 
 
-def check_barrier_proximity(point, barriers, threshold=60):
-    px, py = point
-    for (rect, center) in barriers:
-        distance = point_rect_distance(px, py, rect)
-        if distance < threshold:
-            return True
-    return False
-
-
 def is_corner_ball(ball, field_bounds, margin=150):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = field_bounds
@@ -207,9 +200,9 @@ def is_edge_ball(ball, field_bounds, margin=150):
     return near_left or near_right or near_top or near_bottom
 
 
-def create_staging_point_edge(ball, field_bounds, offset_distance=200):
+def create_staging_point_edge(ball, offset_distance=200):
     x, y, r, o = ball
-    x_min, x_max, y_min, y_max = field_bounds
+    x_min, x_max, y_min, y_max = g.get_field_bounds
 
     # Venstre kant
     if abs(x - x_min) < 150:
@@ -224,8 +217,7 @@ def create_staging_point_edge(ball, field_bounds, offset_distance=200):
     elif abs(y - y_max) < 150:
         return (x, y - offset_distance, r, o)
 
-    # Fallback
-    return (x - offset_distance, y - offset_distance, r, o)
+    return (x, y, r, o)
 
 
 def create_staging_point_corner(ball, field_bounds, offset_distance=350):
@@ -258,42 +250,6 @@ def _point_to_segment_distance(px, py, x1, y1, x2, y2):
     t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)))
     proj_x, proj_y = x1 + t*dx, y1 + t*dy
     return math.hypot(px - proj_x, py - proj_y)
-
-
-def egg_blocks_path(robot_center, ball, egg, threshold=60):
-    """
-    Returnerer True hvis ægget ligger < threshold fra linjen
-    robot_center → bold.
-    """
-    rx, ry = robot_center
-    bx, by = ball[:2]
-    ex, ey, er = egg  # er = æg-radius
-    dist = _point_to_segment_distance(ex, ey, rx, ry, bx, by)
-    return dist < threshold + er
-
-
-def create_staging_point_egg(robot_center, ball, egg, offset_distance=200):
-    """
-    Laver et staging-punkt vinkelret på banen omkring ægget,
-    så robotten kan køre uden om.
-    """
-    rx, ry = robot_center
-    bx, by = ball[:2]
-    ex, ey, er = egg
-
-    # vektor robot → bold
-    vx, vy = bx - rx, by - ry
-    # vinkelret enhedsvektor
-    perp_x, perp_y = -vy, vx
-    mag = math.hypot(perp_x, perp_y) or 1.0
-    perp_x, perp_y = perp_x / mag, perp_y / mag
-
-    # staging-punkt forskudt fra ægget
-    sx = ex + perp_x * (er + offset_distance)
-    sy = ey + perp_y * (er + offset_distance)
-
-    # radius 15 er fint til visualisering; farve-id bevares fra bolden
-    return (int(sx), int(sy), 15, ball[3])
 
 
 def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=40):
@@ -346,17 +302,6 @@ def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=4
             return True
 
     return False
-
-
-def delivery_routine(robot_info):
-    # Simple placeholder routine
-    # Go forward to an approach point, turn, then reverse
-    return "delivery"
-
-
-def stop_delivery_routine():
-    return "continue"
-
 
 def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
 
@@ -527,131 +472,100 @@ def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
 
     return line1, line2
 
+
+def get_cross_zones():
+    zone_width = (g.FIELD_X_MAX - g.FIELD_X_MIN) / 7
+    zone_height = (g.FIELD_Y_MAX - g.FIELD_Y_MIN) / 7
+
+    cross_zones = set()
+    for row in range(7):
+        for col in range(7):
+            zx_min = g.FIELD_X_MIN + col * zone_width
+            zx_max = zx_min + zone_width
+            zy_min = g.FIELD_Y_MIN + row * zone_height
+            zy_max = zy_min + zone_height
+
+            if not (g.CROSS_X_MAX < zx_min or g.CROSS_X_MIN > zx_max or
+                    g.CROSS_Y_MAX < zy_min or g.CROSS_Y_MIN > zy_max):
+                cross_zones.add((row, col))
+
+    return cross_zones
+
+def get_zone_for_position(x, y):
+    zone_width = (g.FIELD_X_MAX - g.FIELD_X_MIN) / 7
+    zone_height = (g.FIELD_Y_MAX - g.FIELD_Y_MIN) / 7
+
+    col = int((x - g.FIELD_X_MIN) / zone_width)
+    row = int((y - g.FIELD_Y_MIN) / zone_height)
+
+    col = max(0, min(7 - 1, col))
+    row = max(0, min(7 - 1, row))
+
+    return (row, col)
+
+def zone_to_position(row, col):
+    zone_width = (g.FIELD_X_MAX - g.FIELD_X_MIN) / 7
+    zone_height = (g.FIELD_Y_MAX - g.FIELD_Y_MIN) / 7
+
+    x = g.FIELD_X_MIN + col * zone_width + zone_width / 2
+    y = g.FIELD_Y_MIN + row * zone_height + zone_height / 2
+    return (int(x), int(y))
+
+def get_zone_center(zone):
+    row, col = zone
+    zone_width = (g.FIELD_X_MAX - g.FIELD_X_MIN) / 7
+    zone_height = (g.FIELD_Y_MAX - g.FIELD_Y_MIN) / 7
+    x = g.FIELD_X_MIN + (col + 0.5) * zone_width
+    y = g.FIELD_Y_MIN + (row + 0.5) * zone_height
+    return x, y
+
+
+def bfs_path(start_zone, goal_zone, forbidden_zones):
+    queue = deque()
+    queue.append((start_zone, [start_zone]))
+    visited = set()
+    visited.add(start_zone)
+
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  
+
+    while queue:
+        current, path = queue.popleft()
+        if current == goal_zone:
+            return path
+
+        for dr, dc in directions:
+            nr, nc = current[0] + dr, current[1] + dc
+            if 0 <= nr < 7 and 0 <= nc < 7:
+                neighbor = (nr, nc)
+                if neighbor not in visited and neighbor not in forbidden_zones:
+                    visited.add(neighbor)
+                    queue.append((neighbor, path + [neighbor]))
+
+    return None 
+
+def get_simplified_target(path_zones, robot_pos, egg, cross):
+    for zone in reversed(path_zones[1:]):
+        target_pos = zone_to_position(*zone)
+        dummy_ball = (*target_pos, 10, (255, 255, 255))
+        if not barrier_blocks_path(robot_pos, dummy_ball, egg, cross):
+            return dummy_ball 
+    next_zone = path_zones[1]
+    return (*zone_to_position(*next_zone), 10, (255, 255, 255))
+
+
 def get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.25
-    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.50
-    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.75
+    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (1 / 7)
+    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (2 / 7)
+    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (3 / 7)
+    x4 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (4 / 7)
+    x5 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (5 / 7)
+    x6 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (6 / 7)
 
-    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.25
-    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
-    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.75
+    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (1 / 7)
+    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (2 / 7)
+    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (3 / 7)
+    y4 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (4 / 7)
+    y5 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (5 / 7)
+    y6 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (6 / 7)
 
-    return x1, x2, x3, y1, y2, y3
-
-def determine_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-
-    col = 0
-    if x < x1:
-        col = 0
-    elif x < x2:
-        col = 1
-    elif x < x3:
-        col = 2
-    else:
-        col = 3
-
-    row = 0
-    if y < y1:
-        row = 0
-    elif y < y2:
-        row = 1
-    elif y < y3:
-        row = 2
-    else:
-        row = 3
-
-    zone = row * 4 + col + 1
-    return zone
-
-def determine_staging_point_16(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    fx, fy = center_robot
-    bx, by = best_ball[:2]
-
-    zone_robot = determine_zone(fx, fy, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-    zone_ball = determine_zone(bx, by, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-
-    print(f"Robot zone: {zone_robot}")
-    print(f"Ball zone: {zone_ball}")
-
-    # If in same zone, go directly
-    if zone_robot == zone_ball:
-        return center_robot
-
-    p1 = fx, by
-    p2 = bx, fy
-
-    x, y = closest_to_corner(p1, p2, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-
-    staging_zone = closest_corner_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-
-    # Otherwise: move toward center of ball's zone
-    x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
-    grid_x = [FIELD_X_MIN, x1, x2, x3, FIELD_X_MAX]
-    grid_y = [FIELD_Y_MIN, y1, y2, y3, FIELD_Y_MAX]
-
-    # Determine ball zone center
-    row_b = (staging_zone - 1) // 4
-    col_b = (staging_zone - 1) % 4
-    zone_center_x = (grid_x[col_b] + grid_x[col_b + 1]) / 2
-    zone_center_y = (grid_y[row_b] + grid_y[row_b + 1]) / 2
-
-    return (zone_center_x, zone_center_y)
-
-def closest_corner_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    # Define 4x4 grid thresholds
-    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.25
-    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.50
-    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.75
-
-    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.25
-    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
-    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.75
-
-    grid_x = [FIELD_X_MIN, x1, x2, x3, FIELD_X_MAX]
-    grid_y = [FIELD_Y_MIN, y1, y2, y3, FIELD_Y_MAX]
-
-    # Define the 4 corner zones: (row, col) and zone_number
-    corner_zones = {
-        1: (0, 0),   # top-left
-        4: (0, 3),   # top-right
-        13: (3, 0),  # bottom-left
-        16: (3, 3)   # bottom-right
-    }
-
-    closest_zone = None
-    closest_dist = float("inf")
-
-    for zone_number, (row, col) in corner_zones.items():
-        center_x = (grid_x[col] + grid_x[col + 1]) / 2
-        center_y = (grid_y[row] + grid_y[row + 1]) / 2
-        dist = np.hypot(x - center_x, y - center_y)
-        if dist < closest_dist:
-            closest_dist = dist
-            closest_zone = zone_number
-
-    return closest_zone
-
-
-def closest_to_corner(p1, p2, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    corners = {
-        "top_left": (FIELD_X_MIN, FIELD_Y_MIN),
-        "top_right": (FIELD_X_MAX, FIELD_Y_MIN),
-        "bottom_left": (FIELD_X_MIN, FIELD_Y_MAX),
-        "bottom_right": (FIELD_X_MAX, FIELD_Y_MAX)
-    }
-
-    def min_corner_distance(point):
-        px, py = point
-        return min(((corner_name, np.hypot(px - cx, py - cy)) for corner_name, (cx, cy) in corners.items()),
-                   key=lambda x: x[1])
-
-    p1_corner, p1_dist = min_corner_distance(p1)
-    p2_corner, p2_dist = min_corner_distance(p2)
-
-    # Returnér kun punktet – ikke navnet
-    if p1_dist < p2_dist:
-        return p1
-    else:
-        return p2
-
+    return x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6

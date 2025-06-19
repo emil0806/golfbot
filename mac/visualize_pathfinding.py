@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import math
 
-def visualize_pathfinding(robot_position, ball_positions):
-    (rx, ry), (fx, fy), _ = robot_position
+def visualize_pathfinding(back_marker, ball_positions):
+    (rx, ry), (fx, fy), _ = back_marker
 
     # If one ball is passed, convert to list
     if isinstance(ball_positions[0], (int, float)):

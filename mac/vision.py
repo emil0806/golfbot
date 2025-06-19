@@ -1,9 +1,11 @@
+from collections import deque
 import cv2
 import numpy as np
 import time
 
-egg_location = []
-# Globalt eller i din hovedkontrolklasse
+import globals_config as g
+
+ball_history = deque(maxlen=5)  # Saves latest five frames
 
 def stabilize_detections(current_balls, history, distance_threshold=5):
     stabilized = current_balls.copy()
@@ -16,7 +18,7 @@ def stabilize_detections(current_balls, history, distance_threshold=5):
     return stabilized
 
 
-def detect_balls(frame, egg, robot_position, front_marker):
+def detect_balls(frame, egg, back_marker, front_marker):
     # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -91,9 +93,9 @@ def detect_balls(frame, egg, robot_position, front_marker):
                 if egg:
                     is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
-                if robot_position and front_marker:
+                if back_marker and front_marker:
                     # Brug midtpunkt mellem bagende og front
-                    dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+                    dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(back_marker))
                     dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
                     is_inside_robot = dist_to_back < 80 or dist_to_front < 80
 
@@ -137,8 +139,8 @@ def detect_balls(frame, egg, robot_position, front_marker):
             if egg:
                 is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
             is_inside_robot = False
-            if robot_position:
-                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+            if back_marker:
+                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(back_marker))
                 dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
                 is_inside_robot = dist_to_back < 60 or dist_to_front < 80
 
@@ -148,6 +150,9 @@ def detect_balls(frame, egg, robot_position, front_marker):
                 elif is_orange:
                     ball_positions.append((x, y, r, 1))
 
+    ball_positions = [(x, y, r, o) for (
+                x, y, r, o) in ball_positions if g.FIELD_X_MIN < x < g.FIELD_X_MAX and g.FIELD_Y_MIN < y < g.FIELD_Y_MAX]
+    
     return ball_positions
 
 def detect_robot(frame):
@@ -309,12 +314,15 @@ def detect_robot(frame):
     cv2.imshow("Robot Debug", frame)
 
     if front is not None and back is not None:
-        return back, front, direction_vector
+        cm_x = (front[0] + back[0]) // 2
+        cm_y = (front[1] + front[1]) // 2
+        center = (cm_x, cm_y)
+        return front, center, back, direction_vector
     else:
         return None
 
 
-def detect_barriers(frame, robot_position=None, ball_positions=None):
+def detect_barriers(frame, back_marker=None, ball_positions=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farve (HSV wraparound)
@@ -348,16 +356,16 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     cv2.imshow("Barrier Mask", mask)
     cv2.imshow("Edges", edges)
 
-    if robot_position:
-        rx, ry = robot_position
+    if back_marker:
+        rx, ry = back_marker
 
         filtered_barriers = []
 
         for ((x1, y1, x2, y2), (cx, cy)) in barriers:
             # Tjek afstand til robot
             too_close_to_robot = False
-            if robot_position:
-                rx, ry = robot_position
+            if back_marker:
+                rx, ry = back_marker
                 if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 70:
                     too_close_to_robot = True
 
@@ -377,11 +385,7 @@ def detect_barriers(frame, robot_position=None, ball_positions=None):
     else:
         return barriers
 
-def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, 
-                FIELD_X_MIN = None, 
-                FIELD_X_MAX = None,
-                FIELD_Y_MIN = None,
-                FIELD_Y_MAX = None):    
+def detect_cross(frame, back_marker=None, front_marker=None, ball_positions=None):    
     
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -419,8 +423,8 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
         too_close_to_robot = False
         too_close_to_ball = False
 
-        if robot_position:
-            rx, ry = robot_position
+        if back_marker:
+            rx, ry = back_marker
             if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 150:
                 too_close_to_robot = True
 
@@ -436,10 +440,10 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
                     break
 
         too_close_to_field = (
-        cx < FIELD_X_MIN + 50 or
-        cx > FIELD_X_MAX - 50 or
-        cy < FIELD_Y_MIN + 50 or
-        cy > FIELD_Y_MAX - 50
+        cx < g.FIELD_X_MIN + 50 or
+        cx > g.FIELD_X_MAX - 50 or
+        cy < g.FIELD_Y_MIN + 50 or
+        cy > g.FIELD_Y_MAX - 50
         )
 
         if not too_close_to_robot and not too_close_to_ball and not too_close_to_field:
@@ -452,7 +456,7 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
     return cross_lines  # Liste af linjer
 
 
-def detect_egg(frame, robot_position, front_marker):
+def detect_egg(frame, back_marker, front_marker):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     lower_white = np.array([0, 0, 180])
@@ -475,8 +479,8 @@ def detect_egg(frame, robot_position, front_marker):
         if 0.6 < circularity and radius > 20:
 
             is_inside_robot = False
-            if robot_position:
-                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(robot_position))
+            if back_marker:
+                dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(back_marker))
                 dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
                 is_inside_robot = dist_to_back < 60 or dist_to_front < 80
 
