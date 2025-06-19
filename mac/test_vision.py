@@ -1,7 +1,7 @@
 import cv2
 import time
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field
+from vision import detect_balls, detect_robot, detect_egg, detect_cross, inside_field
 from pathfinding import (
     find_best_ball, determine_direction,
     is_edge_ball, is_corner_ball,
@@ -20,10 +20,10 @@ barriers = []
 cross = []
 egg = None
 
-FIELD_X_MIN = None
-FIELD_X_MAX = None
-FIELD_Y_MIN = None
-FIELD_Y_MAX = None
+FIELD_X_MIN = 251
+FIELD_X_MAX = 1585
+FIELD_Y_MIN = 66
+FIELD_Y_MAX = 1042
 
 CROSS_X_MIN = None
 CROSS_X_MAX = None
@@ -45,40 +45,19 @@ while barrier_call < 5:
         ball_positions = detect_balls(frame, egg,
                                        robot_position, front_marker)
 
-        bar = detect_barriers(frame, robot_position, ball_positions)
-        barriers.append(bar)
+
 
         cross_line = detect_cross(frame,
                                   robot_position,
                                   front_marker,
                                   ball_positions,
-                                  bar)
+                                  FIELD_X_MIN,
+                                  FIELD_X_MAX,
+                                  FIELD_Y_MIN,
+                                  FIELD_Y_MAX)
         cross.append(cross_line)
+
     barrier_call += 1
-
-if barriers:
-    flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(flat_barriers)
-    barriers = flat_barriers
-
-    xs = []
-    ys = []
-    for ((x1, y1, x2, y2), _) in barriers:
-        xs.extend([x1, x2])
-        ys.extend([y1, y2])
-
-    if len(xs) >= 4 and len(ys) >= 4:
-        # Sorter og fjern outliers vha. percentil
-        FIELD_X_MIN = int(np.percentile(xs, 5))
-        FIELD_X_MAX = int(np.percentile(xs, 95))
-        FIELD_Y_MIN = int(np.percentile(ys, 5))
-        FIELD_Y_MAX = int(np.percentile(ys, 95))
-
-    print(f"FIELD_X_MIN {FIELD_X_MIN}, FIELD_X_MAX {FIELD_X_MAX}, FIELD_Y_MIN {FIELD_Y_MIN}, FIELD_Y_MAX {FIELD_Y_MAX}")
-else:
-    barriers = []
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-        1], 0, frame.shape[0]
     
 # Homografi til test  (samme logik som i mac_server.py)
 PIX_CORNERS = np.float32([

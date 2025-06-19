@@ -5,7 +5,7 @@ from pathfinding import (determine_direction, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, draw_lines)
 import numpy as np
-from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
+from vision import detect_balls, detect_robot, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
 import time
 
@@ -47,10 +47,10 @@ barriers = []
 cross = []
 egg = None
 
-FIELD_X_MIN = None
-FIELD_X_MAX = None
-FIELD_Y_MIN = None
-FIELD_Y_MAX = None
+FIELD_X_MIN = 251
+FIELD_X_MAX = 1585
+FIELD_Y_MIN = 66
+FIELD_Y_MAX = 1042
 
 CROSS_X_MIN = None
 CROSS_X_MAX = None
@@ -83,37 +83,17 @@ while barrier_call < 8:
     if robot_info:
         robot_position, front_marker, direction = robot_info
         egg = detect_egg(frame, robot_position, front_marker)
-
-        bar = detect_barriers(frame, robot_position, ball_positions)
-        bar = filter_barriers_inside_field(bar, frame.shape)
-        barriers.append(bar)
+    
         cross.append(
             detect_cross(frame,
                          robot_position,
                          front_marker,
-                         ball_positions,
-                         bar)
-        )
+                         ball_positions, 
+                         FIELD_X_MIN,
+                         FIELD_X_MAX,
+                         FIELD_Y_MIN,
+                         FIELD_Y_MAX))
     barrier_call += 1
-if barriers:
-    flat_barriers = [b for sublist in barriers for b in sublist]
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-        flat_barriers)
-    
-    barriers = flat_barriers
-
-    xs = []
-    ys = []
-    for ((x1, y1, x2, y2), _) in barriers:
-        xs.extend([x1, x2])
-        ys.extend([y1, y2])
-
-    if len(xs) >= 4 and len(ys) >= 4:
-        # Sorter og fjern outliers vha. percentil
-        FIELD_X_MIN = int(np.percentile(xs, 5))
-        FIELD_X_MAX = int(np.percentile(xs, 95))
-        FIELD_Y_MIN = int(np.percentile(ys, 5))
-        FIELD_Y_MAX = int(np.percentile(ys, 95))
 
     # ----------  BEREGN HOMOGRAFI  ---------------
     PIX_CORNERS = np.float32([
@@ -135,10 +115,7 @@ if barriers:
     H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
     set_homography(H)                    # gem matrixen globalt i pathfinding.py
 
-else:
-    barriers = []
-    FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = 0, frame.shape[
-        1], 0, frame.shape[0]
+
 
 if cross:
     flat_cross = [c for sublist in cross for c in sublist]

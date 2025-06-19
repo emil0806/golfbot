@@ -344,81 +344,13 @@ def detect_robot(frame):
         return None
 
 
-def detect_barriers(frame, robot_position=None, ball_positions=None):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # Rød farve (HSV wraparound)
-    lower_red1 = np.array([0, 50, 40])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 50, 40])
-    upper_red2 = np.array([180, 255, 255])
-
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask = cv2.bitwise_or(mask1, mask2)
-
-    # Let udglatning og edge detection
-    blurred = cv2.GaussianBlur(mask, (3, 3), 0)
-    edges = cv2.Canny(blurred, 30, 120)
-
-    # Find linjer med Hough Line Transform
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180,
-                            threshold=100, minLineLength=80, maxLineGap=100)
+def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, 
+                FIELD_X_MIN = None, 
+                FIELD_X_MAX = None,
+                FIELD_Y_MIN = None,
+                FIELD_Y_MAX = None):
     
-
-    barriers = []
-    if lines is not None:
-        pts = lines.reshape(-1, 4)        # (x1, y1, x2, y2)
-        xs  = np.concatenate([pts[:, 0], pts[:, 2]])
-        ys  = np.concatenate([pts[:, 1], pts[:, 3]])
-
-        if xs.size and ys.size:
-            min_x, max_x = int(xs.min()), int(xs.max())
-            min_y, max_y = int(ys.min()), int(ys.max())
-
-
-            barriers = [
-                ((min_x, min_y, min_x, max_y), (min_x, (min_y + max_y) // 2)),      # venstre
-                ((max_x, min_y, max_x, max_y), (max_x, (min_y + max_y) // 2)),      # højre
-                ((min_x, min_y, max_x, min_y), ((min_x + max_x) // 2, min_y)),      # top
-                ((min_x, max_y, max_x, max_y), ((min_x + max_x) // 2, max_y))       # bund
-            ]
-
-    # Debug
-    cv2.imshow("Barrier Mask", mask)
-    cv2.imshow("Edges", edges)
-
-    if robot_position:
-        rx, ry = robot_position
-
-        filtered_barriers = []
-
-        for ((x1, y1, x2, y2), (cx, cy)) in barriers:
-            # Tjek afstand til robot
-            too_close_to_robot = False
-            if robot_position:
-                rx, ry = robot_position
-                if np.linalg.norm(np.array((cx, cy)) - np.array((rx, ry))) < 70:
-                    too_close_to_robot = True
-
-            # Tjek afstand til bolde
-            too_close_to_ball = False
-            if ball_positions:
-                for (bx, by, _, _) in ball_positions:
-                    if np.linalg.norm(np.array((cx, cy)) - np.array((bx, by))) < 30:
-                        too_close_to_ball = True
-                        break
-
-            # Hvis ikke for tæt på noget, behold barrieren
-            if not too_close_to_robot and not too_close_to_ball:
-                filtered_barriers.append(((x1, y1, x2, y2), (cx, cy)))
-
-        return filtered_barriers
-    else:
-        return barriers
-
-
-def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=None, barriers=None):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Rød farveområde
@@ -471,20 +403,16 @@ def detect_cross(frame, robot_position=None, front_marker=None, ball_positions=N
                         too_close_to_ball = True
                         break
 
-            if not too_close_to_robot and not too_close_to_ball:
-                cross_lines.append((x1, y1, x2, y2))
+        too_close_to_field = (
+        cx < FIELD_X_MIN + 50 or
+        cx > FIELD_X_MAX - 50 or
+        cy < FIELD_Y_MIN + 50 or
+        cy > FIELD_Y_MAX - 50
+        )
 
-    if barriers:
-        margin = 100 
-        FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = inside_field(
-        barriers)
-        cross_lines = [
-            (x1, y1, x2, y2) for (x1, y1, x2, y2) in cross_lines
-            if (
-                FIELD_X_MIN + margin < (x1 + x2) // 2 < FIELD_X_MAX - margin and
-                FIELD_Y_MIN + margin < (y1 + y2) // 2 < FIELD_Y_MAX - margin
-            )
-        ]
+        if not too_close_to_robot and not too_close_to_ball and not too_close_to_field:
+            cross_lines.append((x1, y1, x2, y2))
+
 
     # Debug mask
     cv2.imshow("Cross Mask", mask)
