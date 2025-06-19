@@ -72,34 +72,6 @@ def sort_balls_by_distance(ball_positions, front_marker):
 
     return sorted_balls
 
-
-def find_best_ball(ball_positions, back_marker, front_marker):
-    global previous_best_ball
-
-    if not ball_positions or not back_marker:
-        return None
-
-    (rx, ry) = back_marker
-    (fx, fy) = front_marker
-
-    for i, ball in enumerate(ball_positions):
-        dist = math.hypot(ball[0] - rx, ball[1] - ry)
-
-    new_best_ball = min(ball_positions, key=lambda ball: math.hypot(
-        ball[0] - fx, ball[1] - fy))
-    new_dist = math.hypot(new_best_ball[0] - fx, new_best_ball[1] - fy)
-
-    if previous_best_ball:
-        old_dist = math.hypot(
-            previous_best_ball[0] - fx, previous_best_ball[1] - fy)
-
-        if new_dist > old_dist * 0.95:
-            return previous_best_ball
-
-    previous_best_ball = new_best_ball
-    return new_best_ball
-
-
 def determine_direction(robot_info, ball_position):
     if not robot_info or not ball_position:
         return "stop"

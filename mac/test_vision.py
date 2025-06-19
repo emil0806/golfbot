@@ -3,7 +3,7 @@ import cv2
 import time
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, stabilize_detections
-from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
+from pathfinding import (determine_direction, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
 
