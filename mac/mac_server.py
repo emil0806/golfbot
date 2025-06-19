@@ -41,6 +41,7 @@ corner_timer = 0
 corner_ball = None
 staging_target = None
 last_robot_info = None
+staged_ball = None
 
 barriers = []
 cross = []
@@ -396,7 +397,7 @@ while True:
                     staging_dist = np.linalg.norm(
                         np.array(staging[:2]) - np.array((cm_x, cm_y)))
                     
-                    if (staging_dist < 30):
+                    if (staging_dist < 20):
                         at_blocked_staging = True
                     
                     if not at_blocked_staging:                        

@@ -438,34 +438,40 @@ def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_M
         return False
 
 
-def is_ball_and_robot_on_line_with_cross(center_robot, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=50):
+def is_ball_and_robot_on_line_with_cross(center_robot, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=150):
     fx, fy = center_robot
     bx, by = best_ball[:2]
     if is_ball_and_robot_in_same_quadrant(center_robot, best_ball, CROSS_CENTER):
         return 0
     if (((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)) and ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin))):
-        return 1
-    elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
-        return 2
-    elif ((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)):
-        if(bx <= CROSS_CENTER):
+        if(bx <= CROSS_CENTER[0]):
             return 1
-        elif(bx >= CROSS_CENTER):
+        elif(bx >= CROSS_CENTER[0]):
+            return 3
+    elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
+        if(by <= CROSS_CENTER[1]):
+            return 2
+        elif(by >= CROSS_CENTER[1]):
+            return 4
+    elif ((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)):
+        if(bx <= CROSS_CENTER[0]):
+            return 1
+        elif(bx >= CROSS_CENTER[0]):
             return 3
     elif ((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)):
-        if(bx <= CROSS_CENTER):
+        if(by <= CROSS_CENTER[1]):
             return 2
-        elif(bx >= CROSS_CENTER):
+        elif(by >= CROSS_CENTER[1]):
             return 4
     elif ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin)):
-        if(fx <= CROSS_CENTER):
+        if(fx <= CROSS_CENTER[0]):
             return 1
-        elif(fx >= CROSS_CENTER):
+        elif(fx >= CROSS_CENTER[0]):
             return 3
     elif ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin)):
-        if(fy <= CROSS_CENTER):
+        if(fy <= CROSS_CENTER[1]):
             return 2
-        elif(fy >= CROSS_CENTER):
+        elif(fy >= CROSS_CENTER[1]):
             return 4 
     else:
         return 5
