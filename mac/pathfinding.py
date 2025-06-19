@@ -179,7 +179,7 @@ def check_barrier_proximity(point, barriers, threshold=60):
     return False
 
 
-def is_corner_ball(ball, field_bounds, margin=150):
+def is_corner_ball(ball, field_bounds, margin=100):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = field_bounds
 
@@ -346,6 +346,31 @@ def barrier_blocks_path(robot, ball, eggs, crosses, robot_radius=80, threshold=4
             return True
 
     return False
+
+def create_staging_ball_cross(ball, cross_bounds, offset_distance=200):
+    # Opsæt situationen
+    bx, by, r, o = ball  # bold position samt radius og farve-id'et
+    Xmin, Xmax, Ymin, Ymax = cross_bounds  # krydsets ramme
+
+    # 1) Find krydsets centrum
+    cx = (Xmin + Xmax) / 2.0
+    cy = (Ymin + Ymax) / 2.0
+
+    # 2) Retningsvektor fra centrum til bold
+    dx = bx - cx
+    dy = by - cy
+
+    # 3) Normaliser vektoren (så længden = 1)
+    mag = math.hypot(dx, dy) or 1.0
+    ux = dx / mag
+    uy = dy / mag
+
+    # 4) Flyt offset_distance mm ud ad netop denne retning
+    sx = cx + ux * offset_distance
+    sy = cy + uy * offset_distance
+
+    # 5) Returner staging-punktet (som en “bold” med samme radius + farve-id)
+    return (int(sx), int(sy), r, o)
 
 
 def delivery_routine(robot_info):

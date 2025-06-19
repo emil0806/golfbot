@@ -5,7 +5,7 @@ from vision import detect_balls, detect_robot, detect_barriers, detect_egg, dete
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone, create_staging_ball_cross)
 
 cap = cv2.VideoCapture(0)
 last_print_time = time.time()
@@ -14,6 +14,7 @@ has_staging = False
 staged_ball = None
 barrier_call = 0
 at_blocked_staging = False
+cross_balls = None
 
 
 barriers = []
@@ -30,6 +31,9 @@ CROSS_X_MAX = None
 CROSS_Y_MIN = None
 CROSS_Y_MAX = None
 CROSS_CENTER = None
+
+CROSS_INTERVAL = 5
+last_cross_time = time.time()
 
 while barrier_call < 5:
     ret, frame = cap.read()
@@ -102,6 +106,7 @@ while True:
     best_staging = None
     best_ball = None
     ball_positions = None
+    cross_balls = []
 
     if robot_info:
         robot_position, front_marker, direction = robot_info
@@ -128,13 +133,35 @@ while True:
         sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
         best_ball = sorted_balls[0] if sorted_balls else None
 
+        if time.time() - last_cross_time >= CROSS_INTERVAL:
+            cross =  detect_cross(frame,
+                                  robot_position,
+                                  front_marker,
+                                  ball_positions,
+                                  FIELD_X_MIN,
+                                  FIELD_X_MAX,
+                                  FIELD_Y_MIN,
+                                  FIELD_Y_MAX)
+            CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX = inside_field(
+                cross)
+            last_cross_time = time.time()
+
         # Vis staging til alle kant/hjørnebolde (debug formål)
         field_bounds = (FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+        cross_bounds = (CROSS_X_MIN, CROSS_X_MAX,
+                    CROSS_Y_MIN, CROSS_Y_MAX)
         for ball in ball_positions:
             if is_corner_ball(ball, field_bounds):
                 staged_balls.append((create_staging_point_corner(ball, field_bounds)))
             elif is_edge_ball(ball, field_bounds):
                 staged_balls.append((create_staging_point_edge(ball, field_bounds)))
+
+        cross_bounds = (CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX)
+        for ball in ball_positions:
+            if is_ball_in_cross(ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+                cross_balls.append(
+                    create_staging_ball_cross(ball, cross_bounds)
+                )
 
         if best_ball:
             # Hvis best_ball er edge eller corner
@@ -142,6 +169,9 @@ while True:
                 staging = create_staging_point_corner(best_ball, field_bounds)
             elif is_edge_ball(best_ball, field_bounds):
                 staging = create_staging_point_edge(best_ball, field_bounds)
+            elif is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX):
+                    staging = create_staging_ball_cross(
+                        best_ball, cross_bounds)
             else:
                 staging = None
 
@@ -245,6 +275,12 @@ while True:
         cv2.putText(frame, "Best Staging", (int(x) - 35, int(y) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
+    if cross_balls:
+            for (x, y, r, o) in cross_balls:
+                cv2.circle(frame, (int(x), int(y)), int(r), (0, 215, 255), 2)
+                cv2.putText(frame, "Cross Ball", (int(x) - 35, int(y) - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 215, 255), 2)
+                
     # --- Tegn robot ---
     if robot_info:
         (rx, ry), (fx, fy), _ = robot_info
@@ -284,6 +320,29 @@ while True:
         cv2.line(frame, (int(x), int(FIELD_Y_MIN)), (int(x), int(FIELD_Y_MAX)), (255, 255, 0), 2)
     for y in [y1, y2, y3]:
         cv2.line(frame, (int(FIELD_X_MIN), int(y)), (int(FIELD_X_MAX), int(y)), (255, 255, 0), 2)
+
+    if CROSS_X_MIN and CROSS_X_MAX and CROSS_Y_MIN and CROSS_Y_MAX:
+        offset = 150
+
+        # Vandret linje over korset
+        line_y_top = max(FIELD_Y_MIN, CROSS_Y_MIN - offset)
+        cv2.line(frame, (FIELD_X_MIN, line_y_top), (FIELD_X_MAX, line_y_top), (200, 200, 200), 2)
+        cv2.putText(frame, "+150", (FIELD_X_MIN + 10, line_y_top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+        # Vandret linje under korset
+        line_y_bottom = min(FIELD_Y_MAX, CROSS_Y_MAX + offset)
+        cv2.line(frame, (FIELD_X_MIN, line_y_bottom), (FIELD_X_MAX, line_y_bottom), (200, 200, 200), 2)
+        cv2.putText(frame, "-150", (FIELD_X_MIN + 10, line_y_bottom + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+        # Lodret linje til venstre for korset
+        line_x_left = max(FIELD_X_MIN, CROSS_X_MIN - offset)
+        cv2.line(frame, (line_x_left, FIELD_Y_MIN), (line_x_left, FIELD_Y_MAX), (200, 200, 200), 2)
+        cv2.putText(frame, "+150", (line_x_left - 40, FIELD_Y_MIN + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+        # Lodret linje til højre for korset
+        line_x_right = min(FIELD_X_MAX, CROSS_X_MAX + offset)
+        cv2.line(frame, (line_x_right, FIELD_Y_MIN), (line_x_right, FIELD_Y_MAX), (200, 200, 200), 2)
+        cv2.putText(frame, "-150", (line_x_right + 10, FIELD_Y_MIN + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
 
     cv2.imshow("Staging Ball Test", frame)
