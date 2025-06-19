@@ -4,7 +4,7 @@ import cv2
 from pathfinding import (determine_direction, find_best_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge,
     egg_blocks_path, create_staging_point_egg, delivery_routine, stop_delivery_routine, 
-    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines)
+    barrier_blocks_path, close_to_barrier, set_homography, determine_staging_point, is_ball_and_robot_on_line_with_cross, is_ball_in_cross, draw_lines, get_grid_thresholds, determine_staging_point_16, determine_zone)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_barriers, detect_egg, detect_cross, inside_field, filter_barriers_inside_field
 from config import EV3_IP, PORT
@@ -143,8 +143,8 @@ while True:
 
         rx, ry = robot_position
         fx, fy = front_marker
-        cm_x = (fx + rx) / 2
-        cm_y = (fy + ry) / 2
+        cm_x = (fx + rx) // 2
+        cm_y = (fy + ry) // 2
         center_robot = (cm_x, cm_y)
 
         current_time = time.time()
@@ -190,12 +190,12 @@ while True:
                     if barrier_blocks_path(front_marker, dummy_target, egg, cross):
                         y = 0
                         x = 0
-                        if (cm_x <= ((FIELD_X_MAX - FIELD_X_MIN) * 0.5)):
-                            if(cm_y <= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
-                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                        if (cm_x <= CROSS_CENTER[0]):
+                            if(cm_y <= CROSS_CENTER[1]):
+                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.15) + FIELD_Y_MIN
                                 x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
-                            elif (cm_y >= (FIELD_Y_MAX - FIELD_Y_MIN) * 0.5):
-                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.80) + FIELD_Y_MIN
+                            elif (cm_y >= CROSS_CENTER[1]):
+                                y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.85) + FIELD_Y_MIN
                                 x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
                         else:
                             x = FIELD_X_MAX - 200
@@ -207,13 +207,10 @@ while True:
                         
                         if (staging_dist < 30):
                             at_blocked_staging = True
-                            has_staging = False
                         
                         if not at_blocked_staging:                        
                             dummy_target = staging  
                             staged_balls.append(dummy_target)
-                            staged_ball = staging
-                            has_staging = True
                     movement_command = determine_direction(
                         robot_info, dummy_target)
                     if movement_command != last_command:
@@ -296,7 +293,7 @@ while True:
                         best_ball = corner_balls[0] if corner_balls else None
                 else: 
                     best_ball = corner_ball
-                if corner_stage == 0:
+                if corner_stage == 0 and len(ball_positions) > 0:
                         corner_stage = 1
             else:
                 if (len(ball_positions) == len(corner_balls)):
@@ -306,7 +303,7 @@ while True:
                         best_ball = pre_sorted_balls[0] if pre_sorted_balls else None
                     else: 
                         best_ball = corner_ball
-                    if corner_stage == 0:
+                    if corner_stage == 0 and len(ball_positions) > 0:
                         corner_stage = 1
                 else:
                     for ball in pre_sorted_balls:
@@ -373,13 +370,25 @@ while True:
                     y = 0
                     x = 0
                     in_line = is_ball_and_robot_on_line_with_cross(center_robot, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER)
+                    # Venstre for kryds
                     if (in_line == 1):
+                        print("in_line 1")
                         y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
-                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.20) + FIELD_X_MIN
+                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.15) + FIELD_X_MIN
+                    # Over kryds
                     elif(in_line == 2):
-                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.20) + FIELD_Y_MIN
+                        print("in_line 2")
+                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.15) + FIELD_Y_MIN
                         x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                    # Højre for kryds
                     elif(in_line == 3):
+                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.50) + FIELD_Y_MIN
+                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.85) + FIELD_X_MIN
+                    # Under kryds
+                    elif(in_line == 4):
+                        y = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.85) + FIELD_Y_MIN
+                        x = ((FIELD_X_MAX - FIELD_X_MIN) * 0.50) + FIELD_X_MIN
+                    elif(in_line == 5):
                         print("fuck")
                         x, y = determine_staging_point(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX, CROSS_CENTER)
                     
@@ -393,7 +402,6 @@ while True:
                     if not at_blocked_staging:                        
                         best_ball = staging  
                         staged_balls.append(best_ball)
-                        staged_ball = staging
                 
             if close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX) and delivery_stage < 1 and len(ball_positions) > 0:
                 movement_command = "stop"
@@ -536,11 +544,13 @@ while True:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # Tegn staging-punkter (lilla)
-        if (staged_balls):
-            for (x, y, r, o) in staged_balls:
-                cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
-                cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        if (staged_balls and len(staged_balls) > 0):
+            for ball in staged_balls:
+                if ball is not None:
+                    x, y, r, o = ball
+                    cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
+                    cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
     
         # Tegn æg (gul)
         if (egg):
@@ -573,6 +583,14 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
 
             cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
+
+        x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+        
+        for x in [x1, x2, x3]:
+            cv2.line(frame, (int(x), int(FIELD_Y_MIN)), (int(x), int(FIELD_Y_MAX)), (255, 255, 0), 2)
+        for y in [y1, y2, y3]:
+            cv2.line(frame, (int(FIELD_X_MIN), int(y)), (int(FIELD_X_MAX), int(y)), (255, 255, 0), 2)
+
 
     cv2.imshow("Ball & Robot Detection", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):

@@ -402,12 +402,12 @@ def determine_staging_point(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     fx, fy = center_robot
     bx, by = best_ball[:2]
 
-    x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.2) + FIELD_X_MIN
+    x_25 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.15) + FIELD_X_MIN
     x_50 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.5) + FIELD_X_MIN
-    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.8) + FIELD_X_MIN
-    y_25 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.2) + FIELD_Y_MIN
+    x_75 = ((FIELD_X_MAX - FIELD_X_MIN) * 0.85) + FIELD_X_MIN
+    y_25 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.15) + FIELD_Y_MIN
     y_50 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.5) + FIELD_Y_MIN
-    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.8) + FIELD_Y_MIN
+    y_75 = ((FIELD_Y_MAX - FIELD_Y_MIN) * 0.85) + FIELD_Y_MIN
 
     robot_quadrant = determine_robot_quadrant(
         center_robot, CROSS_CENTER)
@@ -424,7 +424,7 @@ def determine_staging_point(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, F
     elif ((robot_quadrant == 1 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 1)):
         return (fx, by)
     elif ((robot_quadrant == 2 and ball_quadrant == 3) or (robot_quadrant == 3 and ball_quadrant == 2)):
-        return (fx, by)
+        return (bx, fy)
     elif ((robot_quadrant == 2 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 2)):
         return (x_75, y_50)
     elif ((robot_quadrant == 3 and ball_quadrant == 4) or (robot_quadrant == 4 and ball_quadrant == 3)):
@@ -438,19 +438,37 @@ def is_ball_in_cross(best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_M
         return False
 
 
-def is_ball_and_robot_on_line_with_cross(front_marker, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=50):
-    fx, fy = front_marker
+def is_ball_and_robot_on_line_with_cross(center_robot, best_ball, CROSS_X_MIN, CROSS_X_MAX, CROSS_Y_MIN, CROSS_Y_MAX, CROSS_CENTER, margin=50):
+    fx, fy = center_robot
     bx, by = best_ball[:2]
-    if is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_CENTER):
-        print("cehck")
+    if is_ball_and_robot_in_same_quadrant(center_robot, best_ball, CROSS_CENTER):
         return 0
-    print(f"cross: {CROSS_CENTER}")
     if (((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)) and ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin))):
         return 1
     elif (((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)) and ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin))):
         return 2
+    elif ((fx >= CROSS_X_MIN - margin) and (fx <= CROSS_X_MAX + margin)):
+        if(bx <= CROSS_CENTER):
+            return 1
+        elif(bx >= CROSS_CENTER):
+            return 3
+    elif ((fy >= CROSS_Y_MIN - margin) and (fy <= CROSS_Y_MAX + margin)):
+        if(bx <= CROSS_CENTER):
+            return 2
+        elif(bx >= CROSS_CENTER):
+            return 4
+    elif ((bx >= CROSS_X_MIN - margin) and (bx <= CROSS_X_MAX + margin)):
+        if(fx <= CROSS_CENTER):
+            return 1
+        elif(fx >= CROSS_CENTER):
+            return 3
+    elif ((by >= CROSS_Y_MIN - margin) and (by <= CROSS_Y_MAX + margin)):
+        if(fy <= CROSS_CENTER):
+            return 2
+        elif(fy >= CROSS_CENTER):
+            return 4 
     else:
-        return 3
+        return 5
 
 def is_ball_and_robot_in_same_quadrant(front_marker, best_ball, CROSS_CENTER):
     ball_q = determine_ball_quadrant(best_ball, CROSS_CENTER)
@@ -485,3 +503,132 @@ def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     line2 = ((bx - offs_x, by - offs_y), (fx - offs_x, fy - offs_y))
 
     return line1, line2
+
+def get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.25
+    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.50
+    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.75
+
+    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.25
+    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
+    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.75
+
+    return x1, x2, x3, y1, y2, y3
+
+def determine_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    col = 0
+    if x < x1:
+        col = 0
+    elif x < x2:
+        col = 1
+    elif x < x3:
+        col = 2
+    else:
+        col = 3
+
+    row = 0
+    if y < y1:
+        row = 0
+    elif y < y2:
+        row = 1
+    elif y < y3:
+        row = 2
+    else:
+        row = 3
+
+    zone = row * 4 + col + 1
+    return zone
+
+def determine_staging_point_16(center_robot, best_ball, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    fx, fy = center_robot
+    bx, by = best_ball[:2]
+
+    zone_robot = determine_zone(fx, fy, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    zone_ball = determine_zone(bx, by, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    print(f"Robot zone: {zone_robot}")
+    print(f"Ball zone: {zone_ball}")
+
+    # If in same zone, go directly
+    if zone_robot == zone_ball:
+        return center_robot
+
+    p1 = fx, by
+    p2 = bx, fy
+
+    x, y = closest_to_corner(p1, p2, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    staging_zone = closest_corner_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+
+    # Otherwise: move toward center of ball's zone
+    x1, x2, x3, y1, y2, y3 = get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX)
+    grid_x = [FIELD_X_MIN, x1, x2, x3, FIELD_X_MAX]
+    grid_y = [FIELD_Y_MIN, y1, y2, y3, FIELD_Y_MAX]
+
+    # Determine ball zone center
+    row_b = (staging_zone - 1) // 4
+    col_b = (staging_zone - 1) % 4
+    zone_center_x = (grid_x[col_b] + grid_x[col_b + 1]) / 2
+    zone_center_y = (grid_y[row_b] + grid_y[row_b + 1]) / 2
+
+    return (zone_center_x, zone_center_y)
+
+def closest_corner_zone(x, y, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    # Define 4x4 grid thresholds
+    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.25
+    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.50
+    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * 0.75
+
+    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.25
+    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.50
+    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * 0.75
+
+    grid_x = [FIELD_X_MIN, x1, x2, x3, FIELD_X_MAX]
+    grid_y = [FIELD_Y_MIN, y1, y2, y3, FIELD_Y_MAX]
+
+    # Define the 4 corner zones: (row, col) and zone_number
+    corner_zones = {
+        1: (0, 0),   # top-left
+        4: (0, 3),   # top-right
+        13: (3, 0),  # bottom-left
+        16: (3, 3)   # bottom-right
+    }
+
+    closest_zone = None
+    closest_dist = float("inf")
+
+    for zone_number, (row, col) in corner_zones.items():
+        center_x = (grid_x[col] + grid_x[col + 1]) / 2
+        center_y = (grid_y[row] + grid_y[row + 1]) / 2
+        dist = np.hypot(x - center_x, y - center_y)
+        if dist < closest_dist:
+            closest_dist = dist
+            closest_zone = zone_number
+
+    return closest_zone
+
+
+def closest_to_corner(p1, p2, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+    corners = {
+        "top_left": (FIELD_X_MIN, FIELD_Y_MIN),
+        "top_right": (FIELD_X_MAX, FIELD_Y_MIN),
+        "bottom_left": (FIELD_X_MIN, FIELD_Y_MAX),
+        "bottom_right": (FIELD_X_MAX, FIELD_Y_MAX)
+    }
+
+    def min_corner_distance(point):
+        px, py = point
+        return min(((corner_name, np.hypot(px - cx, py - cy)) for corner_name, (cx, cy) in corners.items()),
+                   key=lambda x: x[1])
+
+    p1_corner, p1_dist = min_corner_distance(p1)
+    p2_corner, p2_dist = min_corner_distance(p2)
+
+    # Returnér kun punktet – ikke navnet
+    if p1_dist < p2_dist:
+        return p1
+    else:
+        return p2
+

@@ -169,10 +169,10 @@ def detect_robot(frame):
     kernel = np.ones((5, 5), np.uint8)
 
     color_ranges = {
-        "front_left":  {"color": (255, 255, 255), "lower": np.array([88, 0, 0]),  "upper": np.array([102, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([45, 0, 0]),  "upper": np.array([60, 255, 255])},
-        "back_left":   {"color": (255, 0, 255),    "lower": np.array([165, 0, 0]), "upper": np.array([180, 255, 255])},
-        "back_right":  {"color": (255, 0, 0),      "lower": np.array([145, 0, 0]), "upper": np.array([160, 255, 255])},
+        "front_left":  {"color": (255, 255, 255), "lower": np.array([85, 0, 0]),  "upper": np.array([100, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([75, 0, 0]),  "upper": np.array([90, 255, 255])},
+        "back_left":   {"color": (255, 0, 255),    "lower": np.array([150, 0, 0]), "upper": np.array([165, 255, 255])},
+        "back_right":  {"color": (255, 0, 0),      "lower": np.array([115, 0, 0]), "upper": np.array([130, 255, 255])},
     }
 
     detected = {}
