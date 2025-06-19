@@ -37,8 +37,8 @@ def detect_balls(frame, egg, robot_position, front_marker):
     hsv = cv2.cvtColor(frame_clahe, cv2.COLOR_BGR2HSV)
 
     # Justeret HSV-grænser
-    lower_white = np.array([0, 0, 180])
-    upper_white = np.array([255, 50, 255])
+    lower_white = np.array([0, 0, 160])
+    upper_white = np.array([180, 60, 255])
     lower_orange = np.array([10, 0, 0])
     upper_orange = np.array([35, 255, 255])
 
@@ -48,7 +48,8 @@ def detect_balls(frame, egg, robot_position, front_marker):
 
     # Ekstra L-kanal tærskel for meget lyse områder
     _, l_thresh = cv2.threshold(l_clahe, 220, 255, cv2.THRESH_BINARY)
-    mask_white = cv2.bitwise_and(mask_white, l_thresh)
+    
+    # mask_white = cv2.bitwise_and(mask_white, l_thresh). <------ Udkommenteret for at prøve at teste uden L-channel threshold 
 
     # Morfologisk rensning
     kernel = np.ones((5, 5), np.uint8)
