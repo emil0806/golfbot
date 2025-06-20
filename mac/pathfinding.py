@@ -90,8 +90,10 @@ def determine_direction(robot_info, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        if slow_down_close_to_barrier(front_marker, g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX):
+        if slow_down_close_to_barrier(front_marker):
             return "slow_forward"
+        elif close_to_barrier(front_marker):
+            return "slow_backward"
         else: 
             return "forward"    
     elif cross < 0:
@@ -255,28 +257,28 @@ def barrier_blocks_path(center_marker, ball, eggs, crosses, robot_radius=80, thr
 
     return False
 
-def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def close_to_barrier(front_marker):
 
-    if FIELD_X_MIN + 40 + 60 > front_marker[0]:
+    if g.FIELD_X_MIN + 150 > front_marker[0]:
         return True
-    if FIELD_X_MAX - 40 - 60 < front_marker[0]:
+    if g.FIELD_X_MAX - 150 < front_marker[0]:
         return True
-    if FIELD_Y_MIN + 40 + 60 > front_marker[1]:
+    if g.FIELD_Y_MIN + 150 > front_marker[1]:
         return True
-    if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
+    if g.FIELD_Y_MAX - 150 < front_marker[1]:
         return True
     return False
 
-def slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def slow_down_close_to_barrier(front_marker):
     fx, fy = front_marker
 
-    if FIELD_X_MIN + 200 > fx:
+    if g.FIELD_X_MIN + 200 > fx:
         return True
-    if FIELD_X_MAX - 200 < fx:
+    if g.FIELD_X_MAX - 200 < fx:
         return True
-    if FIELD_Y_MIN + 200 > fy:
+    if g.FIELD_Y_MIN + 200 > fy:
         return True
-    if FIELD_Y_MAX - 200 < fy:
+    if g.FIELD_Y_MAX - 200 < fy:
         return True
     return False
 
