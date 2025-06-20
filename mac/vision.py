@@ -42,8 +42,8 @@ def detect_balls(frame, egg, back_marker, front_marker):
     hsv = cv2.cvtColor(frame_normalized, cv2.COLOR_BGR2HSV)
 
     # Justeret HSV-grænser
-    lower_white = np.array([0, 0, 180])
-    upper_white = np.array([255, 50, 255])
+    lower_white = np.array([0, 0, 160])
+    upper_white = np.array([180, 60, 255])
     lower_orange = np.array([10, 0, 0])
     upper_orange = np.array([35, 255, 255])
 
@@ -53,7 +53,8 @@ def detect_balls(frame, egg, back_marker, front_marker):
 
     # Ekstra L-kanal tærskel for meget lyse områder
     _, l_thresh = cv2.threshold(l_clahe, 220, 255, cv2.THRESH_BINARY)
-    mask_white = cv2.bitwise_and(mask_white, l_thresh)
+    
+    # mask_white = cv2.bitwise_and(mask_white, l_thresh). <------ Udkommenteret for at prøve at teste uden L-channel threshold 
 
     # Morfologisk rensning
     kernel = np.ones((3, 3), np.uint8)
@@ -168,7 +169,15 @@ def detect_robot(frame, target_id=42):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
     corners, ids, _ = detector.detectMarkers(gray)
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+aruco_params = cv2.aruco.DetectorParameters()
 
+def detect_robot(frame, target_id=42):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    corners, ids, _ = detector.detectMarkers(gray)
+
+    if ids is None:
     if ids is None:
         return None
 
