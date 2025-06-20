@@ -4,7 +4,7 @@ import time
 import cv2
 from robot_controller import RobotController
 from robot_state import RobotState
-from pathfinding import (bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_simplified_target, get_zone_center, get_zone_for_position, sort_balls_by_distance,
+from pathfinding import (barrier_blocks_path, bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_simplified_target, get_zone_center, get_zone_for_position, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge)
 import numpy as np
 from config import EV3_IP, PORT
@@ -18,6 +18,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
     corner_balls = [b for b in ball_positions if is_corner_ball(b)]
     print(f"balls: {ball_positions}")
+    print(f"corner: {corner_balls}")
 
     if(len(ball_positions) in [0, 4, 8]):
         return RobotState.DELIVERY
@@ -29,20 +30,26 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
     pre_sorted_balls = sort_balls_by_distance(filtered_balls, front_marker)
     original_ball = pre_sorted_balls[0]
-    ox, oy = original_ball[:2]
+    print(f"pre-sorted: {pre_sorted_balls}")
 
-    original_dist = np.linalg.norm(np.array([cx, cy]) - np.array([ox, oy]))
-
-    if(len(ball_positions) != controller.last_ball_count and original_dist < 20):
+    if((len(ball_positions) != controller.last_ball_count)):
+        print("check")
         controller.simplified_path = None
         controller.last_ball_count = len(ball_positions)
+    
+    staging_dist = None
+    if controller.staged_edge_ball:
+        zx, zy = controller.staged_edge_ball[:2]
+        staging_dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
 
     if is_edge_ball(original_ball):
-        target_ball = create_staging_point_edge(original_ball)
-        controller.edge_alignment_active = True
+        if(barrier_blocks_path(center_marker, original_ball, egg, cross) or staging_dist > 20):
+            target_ball = create_staging_point_edge(original_ball)
+            controller.staged_edge_ball = target_ball
+        else: 
+            target_ball = original_ball
     else:
         target_ball = original_ball
-        controller.edge_alignment_active = False
     
     bx, by = target_ball[:2]
 
@@ -86,14 +93,5 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         command = determine_direction(robot_info, next_target)
         controller.send_command(command)
 
-    if controller.edge_alignment_active and controller.simplified_path == []:
-        robot_zone = get_zone_for_position(cx, cy)
-        ball_zone = get_zone_for_position(original_ball[0], original_ball[1])
-        forbidden_zones = get_cross_zones()
-
-        path = bfs_path(robot_zone, ball_zone, forbidden_zones)
-        if path and len(path) > 1:
-            controller.simplified_path = path[1:]
-        controller.edge_alignment_active = False
     
     return RobotState.COLLECTION

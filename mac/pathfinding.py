@@ -389,7 +389,6 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
     i = 0
     while i < len(path_zones):
         found = False
-        # Gå baglæns fra slutningen for at finde længst mulige hop fremad
         for j in range(len(path_zones) - 1, i, -1):
             zone = path_zones[j]
             target_pos = zone_to_position(*zone)
@@ -411,8 +410,6 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
             i += 1
 
     return simplified_path
-
-
 
 def get_simplified_target(path_zones, center_marker, egg, cross):
     if len(path_zones) <= 1:
