@@ -70,13 +70,17 @@ egg = None
 timer = 0
 last_command = None
 
-
 # ------ SETUP ------
-setup_cross_lines(cap, last_robot_info)
+try:
+    cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
 
-H = setup_homography()
+    H = setup_homography()
+except Exception as e:
+    print(f"[ERROR] Programmet stødte på en fejl: {e}")
+    traceback.print_exc()
+    time.sleep(1) 
 
-state = RobotState.COLLECTION
+controller.state = RobotState.COLLECTION
 
 
 while True:
@@ -92,7 +96,7 @@ while True:
         if robot_info:
             last_robot_info = robot_info
         if not robot_info:
-            print("Robot not detected – skipping this frame")
+            print("Robot not detected - skipping this frame")
             continue
 
         front_marker, center_marker, back_marker, _ = robot_info
@@ -125,17 +129,20 @@ while True:
             
         controller.update_state(new_state)
 
-        line1, line2 = draw_lines(front_marker, controller.current_target, egg, cross)
+        if controller.current_target is not None:
+            line1, line2 = draw_lines(front_marker, controller.current_target, egg, cross)
+            cv2.line(frame, (int(line1[0][0]), int(line1[0][1])), (int(line1[1][0]), int(line1[1][1])), (255, 255, 0), 2)
+            cv2.line(frame, (int(line2[0][0]), int(line2[0][1])), (int(line2[1][0]), int(line2[1][1])), (0, 255, 255), 2)
 
-        cv2.line(frame, 
-                (int(line1[0][0]), int(line1[0][1])), 
-                (int(line1[1][0]), int(line1[1][1])), 
-                (255, 255, 0), 2)
+            cv2.line(frame, 
+                    (int(line1[0][0]), int(line1[0][1])), 
+                    (int(line1[1][0]), int(line1[1][1])), 
+                    (255, 255, 0), 2)
 
-        cv2.line(frame, 
-                (int(line2[0][0]), int(line2[0][1])), 
-                (int(line2[1][0]), int(line2[1][1])), 
-                (0, 255, 255), 2)
+            cv2.line(frame, 
+                    (int(line2[0][0]), int(line2[0][1])), 
+                    (int(line2[1][0]), int(line2[1][1])), 
+                    (0, 255, 255), 2)
         
         # --- Draw actual balls in green ---
         # Tegn alle bolde (grøn)
@@ -187,22 +194,20 @@ while True:
 
             cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
 
-        if controller:
-            cv2.putText(frame, f"State: {controller.state.name}", (30, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-
-            if controller.current_target:
-                tx, ty = controller.current_target[0], controller.current_target[1]
-                cv2.putText(frame, f"Target: ({int(tx)}, {int(ty)})", (30, 60),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-
-
         x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds(g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX)
         
         for x in [x1, x2, x3, x4, x5, x6]:
             cv2.line(frame, (int(x), int(g.FIELD_Y_MIN)), (int(x), int(g.FIELD_Y_MAX)), (255, 255, 0), 2)
-        for y in [y1, y2, y3. y4, y5, y6]:
+        for y in [y1, y2, y3, y4, y5, y6]:
             cv2.line(frame, (int(g.FIELD_X_MIN), int(y)), (int(g.FIELD_X_MAX), int(y)), (255, 255, 0), 2)
+
+        if hasattr(controller, 'simplified_path') and controller.simplified_path:
+            path_points = [(cx, cy)] + controller.simplified_path
+
+            for i in range(len(path_points) - 1):
+                x1, y1 = path_points[i][:2]
+                x2, y2 = path_points[i + 1][:2]
+                cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
 
         cv2.imshow("Ball & Robot Detection", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):

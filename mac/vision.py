@@ -7,16 +7,22 @@ import globals_config as g
 
 ball_history = deque(maxlen=5)  # Saves latest five frames
 
-def stabilize_detections(current_balls, history, distance_threshold=5):
-    stabilized = current_balls.copy()
+def stabilize_detections(current_balls, history, distance_threshold=10):
+    filtered = []
+    for b in current_balls:
+        bx, by, br, bcolor = b
+        if not any(np.linalg.norm(np.array((bx, by)) - np.array((fx, fy))) < distance_threshold and bcolor == fcolor
+                   for fx, fy, _, fcolor in filtered):
+            filtered.append(b)
+
     for past_frame in history:
         for pb in past_frame:
             px, py, pr, pcolor = pb
-            if not any(np.linalg.norm(np.array((px, py)) - np.array((cx, cy))) < distance_threshold and ccolor == pcolor
-                       for cx, cy, _, ccolor in current_balls):
-                stabilized.append(pb)
-    return stabilized
+            if not any(np.linalg.norm(np.array((px, py)) - np.array((fx, fy))) < distance_threshold and pcolor == fcolor
+                       for fx, fy, _, fcolor in filtered):
+                filtered.append(pb)
 
+    return filtered
 
 def detect_balls(frame, egg, back_marker, front_marker):
     # Konverter til LAB og split kanaler

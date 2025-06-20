@@ -208,7 +208,11 @@ def _point_to_segment_distance(px, py, x1, y1, x2, y2):
 
 def barrier_blocks_path(center_marker, ball, eggs, crosses, robot_radius=80, threshold=40):
     # Robot front marker
-    cx, cy = center_marker
+    if len(center_marker) == 2:
+        cx, cy = center_marker
+    else:
+        cx, cy = center_marker[:2]
+
     # Bold position
     bx, by = ball[:2]
 
@@ -402,6 +406,40 @@ def bfs_path(start_zone, goal_zone, forbidden_zones):
                     queue.append((neighbor, path + [neighbor]))
 
     return None 
+
+def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
+
+    simplified_path = []
+    current_pos = center_marker
+    simplified_path.append((int(current_pos[0]), int(current_pos[1])))
+
+    i = 0
+    while i < len(path_zones):
+        found = False
+        # Gå baglæns fra slutningen for at finde længst mulige hop fremad
+        for j in range(len(path_zones) - 1, i, -1):
+            zone = path_zones[j]
+            target_pos = zone_to_position(*zone)
+            dummy_target = (*target_pos, 10, (255, 255, 255))
+
+            if not barrier_blocks_path(current_pos, dummy_target, eggs, crosses):
+                simplified_path.append(target_pos)
+                current_pos = target_pos
+                i = j
+                found = True
+                break
+
+        if not found:
+            zone = path_zones[i]
+            target_pos = ball_pos
+            simplified_path.pop()
+            simplified_path.append(target_pos)
+            current_pos = target_pos
+            i += 1
+
+    return simplified_path
+
+
 
 def get_simplified_target(path_zones, center_marker, egg, cross):
     if len(path_zones) <= 1:
