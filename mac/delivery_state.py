@@ -7,7 +7,7 @@ import time
         
 def handle_delivery(robot_info, egg, cross, ball_positions, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
-    cross_x, cross_y = g.get_cross_center
+    cross_x, cross_y = g.get_cross_center()
 
     if controller.delivery_stage == 0:
         controller.delivery_active = True

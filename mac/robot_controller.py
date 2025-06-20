@@ -19,6 +19,9 @@ class RobotController:
         ### COMMAND ###
         self.last_command = None
 
+        ### BALLS ###
+        self.last_ball_count = 11
+
         ### DELIVERY ###
         self.delivery_stage = 0
         self.delivery_active = False
@@ -36,6 +39,7 @@ class RobotController:
         ### PATH ###
         self.path_to_target = None
         self.reached_path_point = False
+        self.simplified_path = None
 
         ### TARGETS ###
         self.goal_back_alignment_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
@@ -63,7 +67,6 @@ class RobotController:
 
     def set_state(self, new_state: RobotState):
         if new_state != self.state:
-            print(f"[RobotController] Changing state from {self.state.name} to {new_state.name}")
             self.state = new_state
 
             # Reset values
