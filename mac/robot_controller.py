@@ -1,12 +1,12 @@
 import socket
 import globals_config as g
-from mac.pathfinding import get_zone_center
-from mac.robot_state import RobotState
+from pathfinding import get_zone_center
+from robot_state import RobotState
 import numpy as np
 import time
 
 class RobotController:
-    def __init__(self, conn: socket.socket):
+    def __init__(self, conn: socket.socket=None):
         ### COMMUNICATION ###
         self.conn = conn
 
@@ -46,16 +46,17 @@ class RobotController:
     def send_command(self, command: str):
         if command and command != self.last_command:
             print(f"[RobotController] Sending command: {command}")
-            try:
-                self.conn.sendall(command.encode())
-                self.last_command = command
+            if self.conn:
+                try:
+                    self.conn.sendall(command.encode())
+                    self.last_command = command
 
-                if command == "delivery":
-                    self.last_delivery_time = time.time()
-                    self.waiting_for_continue = True
+                    if command == "delivery":
+                        self.last_delivery_time = time.time()
+                        self.waiting_for_continue = True
 
-            except Exception as e:
-                print(f"[RobotController] Failed to send command: {e}")
+                except Exception as e:
+                    print(f"[RobotController] Failed to send command: {e}")
 
     def reset_command(self):
         self.last_command = None
@@ -81,5 +82,21 @@ class RobotController:
         zx, zy = get_zone_center(self.path_to_target[0])
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
         return dist < 20
+    
+    def update_state(self, proposed_state: RobotState):
+        if proposed_state == self.state:
+            self.next_state_candidate = None
+            self.next_state_count = 0
+        else:
+            if proposed_state == self.next_state_candidate:
+                self.next_state_count += 1
+                if self.next_state_count >= self.required_repeats:
+                    self.set_state(proposed_state)
+                    self.next_state_candidate = None
+                    self.next_state_count = 0
+            else:
+                self.next_state_candidate = proposed_state
+                self.next_state_count = 1
+
 
 

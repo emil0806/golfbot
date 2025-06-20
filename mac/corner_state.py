@@ -1,9 +1,9 @@
 from collections import deque
 import time
-from mac.collection_state import handle_collection
-from mac.delivery_state import handle_delivery
-from mac.robot_controller import RobotController
-from mac.robot_state import RobotState
+from collection_state import handle_collection
+from delivery_state import handle_delivery
+from robot_controller import RobotController
+from robot_state import RobotState
 from pathfinding import (determine_direction)
 import numpy as np
 import time

@@ -173,7 +173,7 @@ def detect_robot(frame):
 
     color_ranges = {
         "front_left":  {"color": (255, 255, 255), "lower": np.array([85, 0, 0]),  "upper": np.array([100, 255, 255])},
-        "front_right": {"color": (0, 255, 0),      "lower": np.array([70, 0, 0]),  "upper": np.array([85, 255, 255])},
+        "front_right": {"color": (0, 255, 0),      "lower": np.array([65, 0, 0]),  "upper": np.array([80, 255, 255])},
         "back_left":   {"color": (255, 0, 255),    "lower": np.array([155, 0, 0]), "upper": np.array([170, 255, 255])},
         "back_right":  {"color": (255, 0, 0),      "lower": np.array([120, 0, 0]), "upper": np.array([135, 255, 255])},
     }

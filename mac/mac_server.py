@@ -2,11 +2,11 @@ from collections import deque
 import socket
 import time
 import cv2
-from mac.collection_state import handle_collection
-from mac.corner_state import handle_corner
-from mac.delivery_state import handle_delivery
-from mac.robot_controller import RobotController
-from mac.robot_state import RobotState
+from collection_state import handle_collection
+from corner_state import handle_corner
+from delivery_state import handle_delivery
+from robot_controller import RobotController
+from robot_state import RobotState
 from pathfinding import (draw_lines, get_grid_thresholds)
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
@@ -29,9 +29,10 @@ print(f"Waiting for EV3 connection on port {PORT}...")
 conn, addr = server_socket.accept()
 print(f"Connection established with EV3 at {addr}")
 
-# Open the camera feed
+### CAMERA FEED ###
 cap = cv2.VideoCapture(0)
 
+### CONTROLLER ###
 controller = RobotController(conn)
 
 ### STAGING ###
@@ -90,6 +91,9 @@ while True:
 
         if robot_info:
             last_robot_info = robot_info
+        if not robot_info:
+            print("Robot not detected – skipping this frame")
+            continue
 
         front_marker, center_marker, back_marker, _ = robot_info
 
@@ -119,19 +123,7 @@ while True:
             controller.waiting_for_continue = False
             controller.set_state(RobotState.COLLECTION)
             
-        if new_state == controller.state:
-            controller.next_state_candidate = None
-            controller.next_state_count = 0
-        else:
-            if new_state == controller.next_state_candidate:
-                controller.next_state_count += 1
-                if controller.next_state_count >= controller.required_repeats:
-                    controller.set_state(new_state)
-                    controller.next_state_candidate = None
-                    controller.next_state_count = 0
-            else:
-                controller.next_state_candidate = new_state
-                controller.next_state_count = 1
+        controller.update_state(new_state)
 
         line1, line2 = draw_lines(front_marker, controller.current_target, egg, cross)
 

@@ -1,7 +1,7 @@
 import globals_config as g
-from mac.robot_controller import RobotController
+from robot_controller import RobotController
 import numpy as np
-from mac.robot_state import RobotState
+from robot_state import RobotState
 from pathfinding import (bfs_path, determine_direction, get_cross_zones, get_zone_center, get_zone_for_position)
 import time
         
