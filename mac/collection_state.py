@@ -17,8 +17,6 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     cx, cy = center_marker
 
     corner_balls = [b for b in ball_positions if is_corner_ball(b)]
-    print(f"balls: {ball_positions}")
-    print(f"corner: {corner_balls}")
 
     if(len(ball_positions) in [0, 4, 8]):
         return RobotState.DELIVERY
@@ -30,10 +28,8 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
     pre_sorted_balls = sort_balls_by_distance(filtered_balls, front_marker)
     original_ball = pre_sorted_balls[0]
-    print(f"pre-sorted: {pre_sorted_balls}")
 
     if((len(ball_positions) != controller.last_ball_count)):
-        print("check")
         controller.simplified_path = None
         controller.last_ball_count = len(ball_positions)
         controller.edge_staging_reached = False 
@@ -85,7 +81,6 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
         if dist < 20 and len(controller.simplified_path) > 1:
             controller.simplified_path.pop(0)
-            # simplified_path opdateres IKKE her – behold indtil målet
 
         controller.current_target = next_target
         command = determine_direction(robot_info, next_target)

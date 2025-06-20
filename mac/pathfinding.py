@@ -206,7 +206,7 @@ def _point_to_segment_distance(px, py, x1, y1, x2, y2):
     return math.hypot(px - proj_x, py - proj_y)
 
 
-def barrier_blocks_path(center_marker, ball, eggs, crosses, robot_radius=80, threshold=40):
+def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, threshold=40):
     # Robot front marker
     if len(center_marker) == 2:
         cx, cy = center_marker
@@ -245,19 +245,20 @@ def barrier_blocks_path(center_marker, ball, eggs, crosses, robot_radius=80, thr
         return min(d1, d2)
 
     # Tjek æg
-    for ex, ey, er, _ in eggs:
+    for ex, ey, er, _ in egg:
         if dist_to_center(ex, ey) <= threshold + er:
             return True
         if dist_to_edges(ex, ey) <= threshold + er:
             return True
 
     # Tjek kryds
-    for (x1, y1, x2, y2) in crosses:
+    for (x1, y1, x2, y2) in cross:
         midx, midy = (x1 + x2) / 2, (y1 + y2) / 2
         if dist_to_center(midx, midy) <= threshold:
             return True
         if dist_to_edges(midx, midy) <= threshold:
             return True
+
 
     return False
 

@@ -44,7 +44,7 @@ class RobotController:
 
         ### TARGETS ###
         self.goal_back_alignment_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
-        self.goal_first_target = (g.FIELD_X_MAX - 300, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
+        self.goal_first_target = (g.FIELD_X_MAX - 200, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
 
         self.current_target = None
 
@@ -79,6 +79,7 @@ class RobotController:
             self.delivery_active = False
             self.waiting_for_continue = False
             self.at_blocked_staging = False
+            self.simplified_path = None
 
     def reached_next_path_point(self, cx, cy):
         if not self.path_to_target:

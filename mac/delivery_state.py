@@ -2,13 +2,11 @@ import globals_config as g
 from robot_controller import RobotController
 import numpy as np
 from robot_state import RobotState
-from pathfinding import (bfs_path, determine_direction, get_cross_zones, get_zone_center, get_zone_for_position)
+from pathfinding import (bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position)
 import time
         
-def handle_delivery(robot_info, egg, cross, ball_positions, controller: RobotController):
+def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
-    cross_x, cross_y = g.get_cross_center()
-
     if controller.delivery_stage == 0:
         controller.delivery_active = True
         controller.delivery_stage = 1
@@ -23,38 +21,57 @@ def handle_delivery(robot_info, egg, cross, ball_positions, controller: RobotCon
         dist_to_first_target = np.linalg.norm(
             np.array((cx, cy)) - np.array(controller.goal_first_target))
         print(f"[Stage 1] Distance to staging: {dist_to_first_target:.2f}")
-        if controller.path_to_target is None or controller.reached_next_path_point(cx, cy):
+        
+        recalculate = controller.simplified_path is None
+
+        if controller.simplified_path and len(controller.simplified_path) > 1:
+            zx, zy = controller.simplified_path[0][:2]
+            dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
+            if dist < 40:
+                controller.simplified_path.pop(0)
+                recalculate = True
+
+        if recalculate:
             robot_zone = get_zone_for_position(cx, cy)
             ball_zone = get_zone_for_position(bx, by)
             forbidden_zones = get_cross_zones()
+            target_zone = get_zone_for_position(bx, by)
+            if target_zone in get_cross_zones():
+                print(f"[Stage 1] WARNING: goal_first_target is in a cross zone: {target_zone}")
 
             path = bfs_path(robot_zone, ball_zone, forbidden_zones)
 
-            if path and len(path) > 1:
-                controller.path_to_target = path[1:] 
+            if path:
+                simplified = get_simplified_path(path, center_marker, target_ball, egg, cross)
+                print(f"[Stage 1] Simplified path: {simplified}")
+
+                controller.simplified_path = simplified
             else:
-                controller.path_to_target = None
-                return
-        if controller.path_to_target:
-            next_zone = controller.path_to_target[0]
-            zx, zy = get_zone_center(next_zone)
-            next_target = (zx, zy, 10, (255, 255, 255)) 
+                controller.simplified_path = None
+                return RobotState.DELIVERY
+        
+        if controller.simplified_path:
+        
+            next_target = controller.simplified_path[0]
+
+            zx, zy = next_target[:2]
 
             dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-            if dist < 20:
-                controller.reached_path_point = True
-                controller.path_to_target.pop(0)
-            else:
-                controller.reached_path_point = False
-                controller.current_target = next_target
-                movement_command = determine_direction(robot_info, next_target)
-                controller.send_command(movement_command)
+            if dist < 50:
+                if len(controller.simplified_path) > 1:
+                    controller.simplified_path.pop(0)
+                else:
+                    print("[Stage 1] Reached final target, switching to stage 2")
+                    controller.delivery_stage = 2
+                    controller.simplified_path = None
+                    return RobotState.DELIVERY
+
+            controller.current_target = next_target
+            command = determine_direction(robot_info, next_target)
+            controller.send_command(command)
             return RobotState.DELIVERY
-        else:
-            if dist_to_first_target < 20:
-                controller.delivery_stage = 2
-                controller.path_to_target = None
-            return RobotState.DELIVERY
+
+        return RobotState.DELIVERY
 
     elif controller.delivery_stage == 2:
         robot_vector = np.array(
@@ -91,7 +108,7 @@ def handle_delivery(robot_info, egg, cross, ball_positions, controller: RobotCon
         dist_back = np.linalg.norm(
             np.array(back_marker) - np.array(controller.goal_back_alignment_target))
         print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-        if dist_back > 95:
+        if dist_back > 110:
             movement_command = "slow_backward"
             controller.send_command(movement_command)
         else:
