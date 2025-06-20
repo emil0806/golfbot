@@ -93,9 +93,9 @@ while True:
 
             current_balls = detect_balls(frame, egg, back_marker, front_marker)
 
-            stable_balls = stabilize_detections(current_balls, ball_history)
-
-            ball_history.append(current_balls)
+            robot_px = back_marker  # bag-markør i pixel
+            
+            stable_balls = stabilize_detections(current_balls, robot_px)
 
             ball_positions = stable_balls
 
