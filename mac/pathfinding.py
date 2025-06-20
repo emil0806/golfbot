@@ -90,8 +90,10 @@ def determine_direction(robot_info, ball_position):
               vector_front[1] * vector_to_ball[0])
 
     if angle_difference < 2.5:
-        if slow_down_close_to_barrier(front_marker, g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX):
+        if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
+        elif close_to_barrier(front_marker):
+            return "slow_backward"
         else: 
             return "forward"    
     elif cross < 0:
@@ -259,30 +261,55 @@ def barrier_blocks_path(center_marker, ball, eggs, crosses, robot_radius=80, thr
 
     return False
 
-def close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def close_to_barrier(front_marker):
 
-    if FIELD_X_MIN + 40 + 60 > front_marker[0]:
+    if g.FIELD_X_MIN + 150 > front_marker[0]:
         return True
-    if FIELD_X_MAX - 40 - 60 < front_marker[0]:
+    if g.FIELD_X_MAX - 150 < front_marker[0]:
         return True
-    if FIELD_Y_MIN + 40 + 60 > front_marker[1]:
+    if g.FIELD_Y_MIN + 150 > front_marker[1]:
         return True
-    if FIELD_Y_MAX - 40 - 60 < front_marker[1]:
+    if g.FIELD_Y_MAX - 150 < front_marker[1]:
         return True
     return False
 
-def slow_down_close_to_barrier(front_marker, FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
+def slow_down_close_to_barrier(front_marker, back_marker, threshold=300):
     fx, fy = front_marker
+    bx, by = back_marker
+    fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
+    bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-    if FIELD_X_MIN + 200 > fx:
-        return True
-    if FIELD_X_MAX - 200 < fx:
-        return True
-    if FIELD_Y_MIN + 200 > fy:
-        return True
-    if FIELD_Y_MAX - 200 < fy:
-        return True
-    return False
+    # Retningsvektor fra back til front i world-koordinater
+    dx = fx_w - bx_w
+    dy = fy_w - by_w
+    norm = math.hypot(dx, dy)
+    if norm == 0:
+        return False
+    dx /= norm
+    dy /= norm
+
+    # Projektion fremad mod nærmeste væg
+    max_dist = 9999
+    end_x, end_y = fx_w, fy_w
+
+    if dx > 0:
+        dist_x = (g.FIELD_X_MAX - end_x) / dx
+    elif dx < 0:
+        dist_x = (g.FIELD_X_MIN - end_x) / dx
+    else:
+        dist_x = max_dist
+
+    if dy > 0:
+        dist_y = (g.FIELD_Y_MAX - end_y) / dy
+    elif dy < 0:
+        dist_y = (g.FIELD_Y_MIN - end_y) / dy
+    else:
+        dist_y = max_dist
+
+    # Mindste afstand før vi rammer en væg
+    travel_dist = min(dist_x, dist_y)
+
+    return travel_dist < threshold
 
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     # Robot front marker
