@@ -377,14 +377,17 @@ def bfs_path(start_zone, goal_zone, forbidden_zones):
     return None 
 
 def get_simplified_target(path_zones, center_marker, egg, cross):
+    if len(path_zones) <= 1:
+        return (*zone_to_position(*path_zones[-1]), 10, (255, 255, 255))
+
     for zone in reversed(path_zones[1:]):
         target_pos = zone_to_position(*zone)
         dummy_ball = (*target_pos, 10, (255, 255, 255))
         if not barrier_blocks_path(center_marker, dummy_ball, egg, cross):
-            return dummy_ball 
+            return dummy_ball
+
     next_zone = path_zones[1]
     return (*zone_to_position(*next_zone), 10, (255, 255, 255))
-
 
 def get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (1 / 7)

@@ -47,13 +47,13 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         path = bfs_path(robot_zone, ball_zone, forbidden_zones)
 
         if path and len(path) > 1:
-            controller.path_to_target = path[1:] 
+            controller.path_to_target = path
         else:
             controller.path_to_target = None
             return
         
     if controller.path_to_target:
-        next_target = get_simplified_target(controller.path_to_target, center_marker, egg, cross)
+        next_target = get_simplified_target(controller.path_to_target[:1], center_marker, egg, cross)
         zx, zy = next_target[:2]
 
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))

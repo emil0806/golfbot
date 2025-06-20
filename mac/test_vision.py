@@ -8,7 +8,7 @@ from setup import setup_cross_lines, setup_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
 from pathfinding import (bfs_path, get_cross_zones, get_grid_thresholds, get_simplified_target, get_zone_center, get_zone_for_position, sort_balls_by_distance,
-    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge)
+    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, zone_to_position)
 import globals_config as g
 
 ### CAMERA FEED ###
@@ -126,7 +126,7 @@ while True:
             path = bfs_path(robot_zone, ball_zone, forbidden_zones)
 
             if path and len(path) > 1:
-                controller.path_to_target = path[1:] 
+                controller.path_to_target = path
             else:
                 controller.path_to_target = None
 
@@ -211,15 +211,21 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
             cv2.imshow("Stabilized Balls", frame)
         
-        if controller.path_to_target and len(controller.path_to_target) > 1:
+        if controller.path_to_target and len(controller.path_to_target) > 0:
+            path_points = [(cx, cy)] 
+
             simplified_target = get_simplified_target(controller.path_to_target, center_marker, egg, cross)
             sx, sy = simplified_target[:2]
-            cv2.circle(frame, (int(sx), int(sy)), 7, (0, 0, 255), -1)
-            cv2.putText(frame, "Simplified target", (int(sx) + 10, int(sy)), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            for i in range(len(controller.path_to_target) - 1):
-                x1, y1 = get_zone_center(controller.path_to_target[i])
-                x2, y2 = get_zone_center(controller.path_to_target[i + 1])
+            path_points.append((sx, sy))
+
+            for zone in controller.path_to_target[1:]:
+                px, py = zone_to_position(*zone)
+                path_points.append((px, py))
+
+            # Tegn linjer mellem punkterne i ruten
+            for i in range(len(path_points) - 1):
+                x1, y1 = path_points[i]
+                x2, y2 = path_points[i + 1]
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
 
 
