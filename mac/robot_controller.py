@@ -35,7 +35,7 @@ class RobotController:
         self.at_blocked_staging = False
         self.staged_balls = []
         self.edge_alignment_active = False
-        self.staged_edge_ball = None
+        self.edge_staging_reached = False
         
         ### PATH ###
         self.path_to_target = None

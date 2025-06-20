@@ -1,8 +1,8 @@
 ##### BORDER #####
 FIELD_X_MIN = 303
-FIELD_X_MAX = 1615
-FIELD_Y_MIN = 55
-FIELD_Y_MAX = 1021
+FIELD_X_MAX = 1605
+FIELD_Y_MIN = 50
+FIELD_Y_MAX = 1015
 
 def set_field_bounds(bounds):
     global FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX

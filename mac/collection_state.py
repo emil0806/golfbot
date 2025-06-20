@@ -36,29 +36,24 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         print("check")
         controller.simplified_path = None
         controller.last_ball_count = len(ball_positions)
+        controller.edge_staging_reached = False 
     
-    staging_dist = None
-    if controller.staged_edge_ball:
-        zx, zy = controller.staged_edge_ball[:2]
-        staging_dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-
     if is_edge_ball(original_ball):
-        if(barrier_blocks_path(center_marker, original_ball, egg, cross) or staging_dist > 20):
-            target_ball = create_staging_point_edge(original_ball)
-            controller.staged_edge_ball = target_ball
-        else: 
+        if controller.edge_staging_reached:
             target_ball = original_ball
+        else:
+            target_ball = create_staging_point_edge(original_ball)
     else:
         target_ball = original_ball
-    
-    bx, by = target_ball[:2]
+
+    bx, by, _, _ = target_ball
 
     recalculate = controller.simplified_path is None
 
     if controller.simplified_path and len(controller.simplified_path) > 1:
-        zx, zy = controller.simplified_path[1][:2]
+        zx, zy = controller.simplified_path[0][:2]
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        if dist < 20:
+        if dist < 40:
             controller.simplified_path.pop(0)
             recalculate = True
 
@@ -69,18 +64,21 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
         path = bfs_path(robot_zone, ball_zone, forbidden_zones)
 
-        if path and len(path) > 1:
-            controller.simplified_path = get_simplified_path(path, center_marker, target_ball, egg, cross)
+        if path:
+            simplified = get_simplified_path(path, center_marker, target_ball, egg, cross)
+
+            if is_edge_ball(original_ball) and not controller.edge_staging_reached:
+                simplified.append(original_ball[:2])
+
+            controller.simplified_path = simplified
         else:
             controller.simplified_path = None
             return
+
         
     if controller.simplified_path:
-        # Brug eksisterende simplified_path indtil bolden nås
-        if len(controller.simplified_path) >= 2:
-            next_target = controller.simplified_path[1]
-        else:
-            next_target = controller.simplified_path[0]
+        
+        next_target = controller.simplified_path[0]
 
         zx, zy = next_target[:2]
 
@@ -92,6 +90,5 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         controller.current_target = next_target
         command = determine_direction(robot_info, next_target)
         controller.send_command(command)
-
     
     return RobotState.COLLECTION

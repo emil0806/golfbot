@@ -411,7 +411,6 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
 
     simplified_path = []
     current_pos = center_marker
-    simplified_path.append((int(current_pos[0]), int(current_pos[1])))
 
     i = 0
     while i < len(path_zones):
@@ -431,7 +430,8 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
         if not found:
             zone = path_zones[i]
             target_pos = ball_pos
-            simplified_path.pop()
+            if len(simplified_path) > 0:
+                simplified_path.pop()
             simplified_path.append(target_pos)
             current_pos = target_pos
             i += 1
