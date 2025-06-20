@@ -108,7 +108,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_back = np.linalg.norm(
             np.array(back_marker) - np.array(controller.goal_back_alignment_target))
         print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-        if dist_back > 110:
+        if dist_back > 115:
             movement_command = "slow_backward"
             controller.send_command(movement_command)
         else:
@@ -123,6 +123,6 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         controller.last_delivery_count = len(ball_positions)
         controller.waiting_for_continue = True
         controller.send_command(movement_command)
-        return RobotState.CORNER
+        return RobotState.COLLECTION
     
     return RobotState.DELIVERY
