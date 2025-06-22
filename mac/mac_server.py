@@ -114,17 +114,15 @@ while True:
         ball_positions = stable_balls
 
         if controller.state == RobotState.COLLECTION:
+            print("test")
             new_state = handle_collection(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.DELIVERY:
             new_state = handle_delivery(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.CORNER:
             new_state = handle_corner(robot_info, ball_positions, egg, cross, controller)
+        elif controller.state == RobotState.COMPLETE:
+            break
 
-        if controller.waiting_for_continue and time.time() - controller.last_delivery_time > 4:
-            controller.send_command("continue")
-            controller.waiting_for_continue = False
-            controller.set_state(RobotState.COLLECTION)
-            
         controller.update_state(new_state)
 
         if controller.current_target is not None:
@@ -191,6 +189,12 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
 
             cv2.arrowedLine(frame, (rx, ry), (fx, fy), (0, 255, 0), 2)
+
+            center_x = int((fx + rx) / 2)
+            center_y = int((fy + ry) / 2)
+            rotation_radius = 130
+
+            cv2.circle(frame, (center_x, center_y), rotation_radius, (255, 255, 255), 2)
 
         x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds(g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX)
         

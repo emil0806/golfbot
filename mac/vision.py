@@ -168,7 +168,7 @@ def detect_balls(frame, egg, back_marker, front_marker):
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
 aruco_params = cv2.aruco.DetectorParameters()
 
-def detect_robot(frame, target_id=42):
+def detect_robot(frame, target_id=42, scale=2):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
     corners, ids, _ = detector.detectMarkers(gray)
@@ -184,17 +184,21 @@ def detect_robot(frame, target_id=42):
             center_pt = np.mean(c, axis=0).astype(int)
 
             # Brug vektor mellem to hjørner som "retning"
-            front_pt = ((c[0] + c[1]) / 2).astype(int)
-            back_pt = ((c[2] + c[3]) / 2).astype(int)
-            direction = front_pt - back_pt
+            front_base = ((c[0] + c[1]) / 2).astype(float)
+            back_pt = ((c[2] + c[3]) / 2).astype(float)
+            direction = front_base - back_pt
+
+            # Ekstrapoler front fremad
+            front_pt = (back_pt + scale * direction).astype(int)
 
             # Tegn på billedet
             cv2.circle(frame, center_pt, 5, (255, 0, 0), -1)
-            cv2.arrowedLine(frame, tuple(back_pt), tuple(front_pt), (0, 255, 0), 2)
+            cv2.arrowedLine(frame, tuple(back_pt.astype(int)), tuple(front_pt), (0, 255, 0), 2)
 
-            return tuple(front_pt), tuple(center_pt), tuple(back_pt), tuple(direction)
+            return tuple(front_pt), tuple(center_pt), tuple(back_pt.astype(int)), tuple(direction.astype(int))
 
     return None
+
 
 
 def detect_barriers(frame, back_marker=None, ball_positions=None):

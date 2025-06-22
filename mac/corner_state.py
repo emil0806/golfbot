@@ -29,7 +29,7 @@ def handle_corner(robot_info, ball_positions, egg, cross, controller: RobotContr
                 corner_stage = 2
                 print("Next corner stage")
             else:
-                movement_command = determine_direction(robot_info, best_ball)
+                movement_command = determine_direction(robot_info, best_ball, cross)
                 controller.send_command(movement_command)
 
     elif corner_stage == 2:

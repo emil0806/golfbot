@@ -5,22 +5,26 @@ tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
 delivery = MediumMotor(OUTPUT_C)
 
-collector.on(SpeedPercent(35))
+collector.on(SpeedPercent(20))
 
 
 def close_ass():
-    delivery.on_for_seconds(SpeedPercent(5), 2)
+    delivery.on_for_seconds(SpeedPercent(4), 2)
 
 def move_robot(direction):
-    speed = 55  # default hastighed
+    fast_speed = 70
+    normal_speed = 40  # default hastighed
+    medium_speed = 20
+    slow_forward = 10
+    very_slow_forward = 5
     turn_speed = 7
-    collector_speed = 35
+    collector_speed = 30
    
     collector.on(SpeedPercent(collector_speed))
 
     if direction == "forward":
         print("Moving forward")
-        tank_drive.on(SpeedPercent(speed), SpeedPercent(speed)) 
+        tank_drive.on(SpeedPercent(normal_speed), SpeedPercent(normal_speed)) 
 
     elif direction == "left":
         print("Turning left")
@@ -37,11 +41,11 @@ def move_robot(direction):
     elif direction == "delivery":
         print("Delivering")
         tank_drive.on(SpeedPercent(0), SpeedPercent(0))
-        delivery.on_for_seconds(SpeedPercent(-6), 2)
+        delivery.on_for_seconds(SpeedPercent(-5), 2)
     
     elif direction == "continue":
         print("Continuing")
-        delivery.on_for_seconds(SpeedPercent(6), 2)
+        delivery.on_for_seconds(SpeedPercent(5), 2)
 
     elif direction == "very_slow_left":
         print("Turning very slowly left")

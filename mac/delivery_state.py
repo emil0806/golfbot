@@ -7,6 +7,14 @@ import time
         
 def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
+
+    if controller.last_delivery_count == 0:
+        print("[Delivery] Ingen flere bolde tilbage - stopper.")
+        controller.delivery_stage = 0
+        controller.delivery_active = False
+        controller.waiting_for_continue = False
+        return RobotState.COMPLETE
+
     if controller.delivery_stage == 0:
         controller.delivery_active = True
         controller.delivery_stage = 1
@@ -34,12 +42,8 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         if recalculate:
             robot_zone = get_zone_for_position(cx, cy)
             ball_zone = get_zone_for_position(bx, by)
-            forbidden_zones = get_cross_zones()
-            target_zone = get_zone_for_position(bx, by)
-            if target_zone in get_cross_zones():
-                print(f"[Stage 1] WARNING: goal_first_target is in a cross zone: {target_zone}")
 
-            path = bfs_path(robot_zone, ball_zone, forbidden_zones)
+            path = bfs_path(robot_zone, ball_zone, egg, cross)
 
             if path:
                 simplified = get_simplified_path(path, center_marker, target_ball, egg, cross)
@@ -67,7 +71,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
                     return RobotState.DELIVERY
 
             controller.current_target = next_target
-            command = determine_direction(robot_info, next_target)
+            command = determine_direction(robot_info, next_target, cross)
             controller.send_command(command)
             return RobotState.DELIVERY
 
@@ -118,11 +122,15 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
     elif controller.delivery_stage == 4:
         print("[Stage 4] Sending delivery command")
         movement_command = "delivery"
-        controller.delivery_stage = 0 
-        controller.delivery_active = False
-        controller.last_delivery_count = len(ball_positions)
-        controller.waiting_for_continue = True
         controller.send_command(movement_command)
+        time.sleep(5)
+        movement_command = "continue"
+        controller.send_command(movement_command)
+        time.sleep(2)
+        controller.delivery_stage = 0
+        controller.delivery_active = False
+        controller.waiting_for_continue = False
+        controller.last_delivery_count = len(ball_positions)
         return RobotState.COLLECTION
-    
+        
     return RobotState.DELIVERY

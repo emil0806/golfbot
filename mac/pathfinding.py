@@ -58,59 +58,99 @@ def sort_balls_by_distance(ball_positions, front_marker):
 
     return sorted_balls
 
-def determine_direction(robot_info, ball_position):
+
+
+def determine_direction(robot_info, ball_position, crosses=None):
     if not robot_info or not ball_position:
         return "stop"
 
     front_marker, center_marker, back_marker, _ = robot_info
-    ### ----- 1. pixel → world (floor plan) -----
-    bx, by = pix2world(ball_position[:2])
+    crosses = crosses or []
 
-    (rx_p, ry_p) = back_marker
-    (fx_p, fy_p) = front_marker
+    bx, by = pix2world(ball_position[:2])
+    (rx_p, ry_p), (fx_p, fy_p) = back_marker, front_marker
     rx_w, ry_w = pix2world((rx_p, ry_p))
     fx_w, fy_w = pix2world((fx_p, fy_p))
-
-    ### ----- 2. HIGHT-correction -----
     rx, ry = _correct_marker((rx_w, ry_w))
     fx, fy = _correct_marker((fx_w, fy_w))
 
     vector_to_ball = (bx - rx, by - ry)
     vector_front = (fx - rx, fy - ry)
 
-    dot = vector_front[0] * vector_to_ball[0] + \
-        vector_front[1] * vector_to_ball[1]
+    dot = vector_front[0] * vector_to_ball[0] + vector_front[1] * vector_to_ball[1]
     mag_f = math.hypot(*vector_front)
     mag_b = math.hypot(*vector_to_ball)
     cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
     angle_difference = math.degrees(math.acos(cos_theta))
 
-    # Determine if angle is to the left or right using cross product
-    cross = -(vector_front[0] * vector_to_ball[1] -
-              vector_front[1] * vector_to_ball[0])
+    cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
+    center = ((fx + rx) / 2, (fy + ry) / 2)
+    rotation_risk = will_rotation_hit_cross(center, radius=130, cross_lines=crosses)
 
-    if angle_difference < 2.5:
+    if angle_difference < 4:
         if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
         elif close_to_barrier(front_marker):
             return "slow_backward"
-        else: 
-            return "forward"    
+        else:
+            return "forward"
     elif cross < 0:
+        if rotation_risk:
+            if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
+                return "forward"
+            return "slow_backward"        
         if angle_difference > 25:
-            return "fast_right"
+                        return "fast_right"
         elif angle_difference > 15:
             return "right"
         else:
             return "medium_right"
     else:
+        if rotation_risk:
+            if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
+                return "forward"
+            return "slow_backward" 
         if angle_difference > 25:
             return "fast_left"
         elif angle_difference > 15:
             return "left"
         else:
             return "medium_left"
+        
+def will_rotation_hit_cross(center, radius, cross_lines, angle_step=30, threshold=40):
+    for deg in range(0, 360, angle_step):
+        rad = math.radians(deg)
+        px = center[0] + radius * math.cos(rad)
+        py = center[1] + radius * math.sin(rad)
+        for (x1, y1, x2, y2) in cross_lines:
+            d = _point_to_segment_distance(px, py, x1, y1, x2, y2)
+            if d < threshold:
+                return True
+    return False
 
+def prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses, forward_distance=30):
+    fx, fy = front_marker
+    rx, ry = back_marker
+    bx, by = ball_position[:2]
+
+    # Beregn fremad-position
+    direction_vec = (fx - rx, fy - ry)
+    mag = math.hypot(*direction_vec) or 1.0
+    ux, uy = direction_vec[0] / mag, direction_vec[1] / mag
+    forward_pos = (fx + ux * forward_distance, fy + uy * forward_distance)
+
+    # Afstand før og efter
+    dist_now = math.hypot(bx - fx, by - fy)
+    dist_next = math.hypot(bx - forward_pos[0], by - forward_pos[1])
+
+    dummy_forward = (*forward_pos, 10, (255, 255, 255))
+
+    # Hvis vi ikke rammer noget, og det hjælper
+    if not barrier_blocks_path(front_marker, dummy_forward, [], crosses):
+        if dist_next < dist_now:
+            return True
+
+    return False
 
 def point_rect_distance(px, py, rect):
     x, y, w, h = rect
@@ -384,14 +424,13 @@ def get_zone_center(zone):
     y = g.FIELD_Y_MIN + (row + 0.5) * zone_height
     return x, y
 
-
-def bfs_path(start_zone, goal_zone, forbidden_zones):
+def bfs_path(start_zone, goal_zone, eggs, crosses, ball_position=None):
     queue = deque()
     queue.append((start_zone, [start_zone]))
     visited = set()
     visited.add(start_zone)
 
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
     while queue:
         current, path = queue.popleft()
@@ -402,11 +441,22 @@ def bfs_path(start_zone, goal_zone, forbidden_zones):
             nr, nc = current[0] + dr, current[1] + dc
             if 0 <= nr < 7 and 0 <= nc < 7:
                 neighbor = (nr, nc)
-                if neighbor not in visited and neighbor not in forbidden_zones:
+                if neighbor not in visited:
+
+                    if neighbor == goal_zone and ball_position is not None:
+                        dummy_ball = (*ball_position, 10, (255, 255, 255))
+                        start_pos = zone_to_position(*current)
+                        if barrier_blocks_path(start_pos, dummy_ball, eggs, crosses):
+                            continue
+                    else:
+                        if zone_path_is_blocked(current, neighbor, eggs, crosses):
+                            continue
+
                     visited.add(neighbor)
                     queue.append((neighbor, path + [neighbor]))
 
-    return None 
+    return None
+
 
 def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
 
@@ -439,18 +489,14 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
 
     return simplified_path
 
-def get_simplified_target(path_zones, center_marker, egg, cross):
-    if len(path_zones) <= 1:
-        return (*zone_to_position(*path_zones[-1]), 10, (255, 255, 255))
+def zone_path_is_blocked(zone1, zone2, eggs, crosses):
+    target_pos = zone_to_position(*zone2)
+    dummy_ball = (*target_pos, 10, (255, 255, 255))
 
-    for zone in reversed(path_zones[1:]):
-        target_pos = zone_to_position(*zone)
-        dummy_ball = (*target_pos, 10, (255, 255, 255))
-        if not barrier_blocks_path(center_marker, dummy_ball, egg, cross):
-            return dummy_ball
+    center_pos = zone_to_position(*zone1)
 
-    next_zone = path_zones[1]
-    return (*zone_to_position(*next_zone), 10, (255, 255, 255))
+    return barrier_blocks_path(center_pos, dummy_ball, eggs, crosses, robot_radius=80, threshold=50)
+
 
 def get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
     x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (1 / 7)

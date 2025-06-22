@@ -44,7 +44,7 @@ class RobotController:
 
         ### TARGETS ###
         self.goal_back_alignment_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
-        self.goal_first_target = (g.FIELD_X_MAX - 200, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
+        self.goal_first_target = (g.FIELD_X_MAX - 250, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
 
         self.current_target = None
 
@@ -89,6 +89,12 @@ class RobotController:
         return dist < 20
     
     def update_state(self, proposed_state: RobotState):
+        if self.state == RobotState.DELIVERY and proposed_state == RobotState.COLLECTION:
+            self.set_state(proposed_state)
+            self.next_state_candidate = None
+            self.next_state_count = 0
+            return
+
         if proposed_state == self.state:
             self.next_state_candidate = None
             self.next_state_count = 0

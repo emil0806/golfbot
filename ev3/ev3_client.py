@@ -16,9 +16,9 @@ distance_timer = 0
 dist_number = 0
 
 try:
-    if(start_count == 0):
-        close_ass()
-        start_count = 1
+    #if(start_count == 0):
+    #   close_ass()
+    #    start_count = 1
     while True:
 
         data = client_socket.recv(1024).decode().strip() 
