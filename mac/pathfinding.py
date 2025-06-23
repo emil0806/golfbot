@@ -311,6 +311,7 @@ def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, thresh
 
 
     return False
+
 def close_to_cross(front_marker, back_marker, threshold=150):
     fx, fy = front_marker
     bx, by = back_marker
@@ -326,7 +327,16 @@ def close_to_cross(front_marker, back_marker, threshold=150):
     dx /= norm
     dy /= norm
 
-    # Projektion fremad mod nærmeste væg
+    # Simulér en bevægelse fremad i retningsvektoren
+    lookahead = 150  # hvor langt vi "kigger frem" i mm
+    ahead_x = fx_w + dx * lookahead
+    ahead_y = fy_w + dy * lookahead
+
+    # Tjek om det punkt ligger inde i cross-zonen
+    in_cross = (g.CROSS_X_MIN <= ahead_x <= g.CROSS_X_MAX and
+                g.CROSS_Y_MIN <= ahead_y <= g.CROSS_Y_MAX)
+
+    # Som før: projektion mod nærmeste væg
     max_dist = 9999
     end_x, end_y = fx_w, fy_w
 
@@ -344,13 +354,12 @@ def close_to_cross(front_marker, back_marker, threshold=150):
     else:
         dist_y = max_dist
 
-    # Mindste afstand før vi rammer en væg
     travel_dist = min(dist_x, dist_y)
 
-    return travel_dist < threshold
+    # Aktiver kun hvis vi er tæt på OG kigger mod kryds
+    return in_cross and travel_dist < threshold
 
 def close_to_barrier(front_marker, back_marker, threshold=150):
-
     fx, fy = front_marker
     bx, by = back_marker
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
@@ -365,28 +374,36 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
     dx /= norm
     dy /= norm
 
-    # Projektion fremad mod nærmeste væg
-    max_dist = 9999
-    end_x, end_y = fx_w, fy_w
+    # Forudsig hvor vi er om f.eks. 200 mm frem
+    lookahead = 150
+    ahead_x = fx_w + dx * lookahead
+    ahead_y = fy_w + dy * lookahead
 
+    # Er vi på vej udenfor banen?
+    moving_towards_edge = (
+        ahead_x < g.FIELD_X_MIN or ahead_x > g.FIELD_X_MAX or
+        ahead_y < g.FIELD_Y_MIN or ahead_y > g.FIELD_Y_MAX
+    )
+
+    # Projektion fremad mod vægge
+    max_dist = 9999
     if dx > 0:
-        dist_x = (g.FIELD_X_MAX - end_x) / dx
+        dist_x = (g.FIELD_X_MAX - fx_w) / dx
     elif dx < 0:
-        dist_x = (g.FIELD_X_MIN - end_x) / dx
+        dist_x = (g.FIELD_X_MIN - fx_w) / dx
     else:
         dist_x = max_dist
 
     if dy > 0:
-        dist_y = (g.FIELD_Y_MAX - end_y) / dy
+        dist_y = (g.FIELD_Y_MAX - fy_w) / dy
     elif dy < 0:
-        dist_y = (g.FIELD_Y_MIN - end_y) / dy
+        dist_y = (g.FIELD_Y_MIN - fy_w) / dy
     else:
         dist_y = max_dist
 
-    # Mindste afstand før vi rammer en væg
     travel_dist = min(dist_x, dist_y)
 
-    return travel_dist < threshold
+    return moving_towards_edge and travel_dist < threshold
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=200):
     fx, fy = front_marker
@@ -403,28 +420,36 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=200):
     dx /= norm
     dy /= norm
 
-    # Projektion fremad mod nærmeste væg
-    max_dist = 9999
-    end_x, end_y = fx_w, fy_w
+    # Forudsig hvor vi er om f.eks. 200 mm frem
+    lookahead = 200
+    ahead_x = fx_w + dx * lookahead
+    ahead_y = fy_w + dy * lookahead
 
+    # Er vi på vej udenfor banen?
+    moving_towards_edge = (
+        ahead_x < g.FIELD_X_MIN or ahead_x > g.FIELD_X_MAX or
+        ahead_y < g.FIELD_Y_MIN or ahead_y > g.FIELD_Y_MAX
+    )
+
+    # Projektion fremad mod vægge
+    max_dist = 9999
     if dx > 0:
-        dist_x = (g.FIELD_X_MAX - end_x) / dx
+        dist_x = (g.FIELD_X_MAX - fx_w) / dx
     elif dx < 0:
-        dist_x = (g.FIELD_X_MIN - end_x) / dx
+        dist_x = (g.FIELD_X_MIN - fx_w) / dx
     else:
         dist_x = max_dist
 
     if dy > 0:
-        dist_y = (g.FIELD_Y_MAX - end_y) / dy
+        dist_y = (g.FIELD_Y_MAX - fy_w) / dy
     elif dy < 0:
-        dist_y = (g.FIELD_Y_MIN - end_y) / dy
+        dist_y = (g.FIELD_Y_MIN - fy_w) / dy
     else:
         dist_y = max_dist
 
-    # Mindste afstand før vi rammer en væg
     travel_dist = min(dist_x, dist_y)
 
-    return travel_dist < threshold
+    return moving_towards_edge and travel_dist < threshold
 
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     # Robot front marker
