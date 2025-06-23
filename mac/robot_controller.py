@@ -24,6 +24,7 @@ class RobotController:
 
         ### DELIVERY ###
         self.delivery_stage = 0
+        self.delivery_counter = 0
         self.delivery_active = False
         self.last_delivery_count = 11
         self.delivery_candidate = None
@@ -36,6 +37,8 @@ class RobotController:
         self.staged_balls = []
         self.edge_alignment_active = False
         self.edge_staging_reached = False
+        self.corner_staging_reached = False
+        self.cross_staging_reached = False
         
         ### PATH ###
         self.path_to_target = None
@@ -43,7 +46,7 @@ class RobotController:
         self.simplified_path = None
 
         ### TARGETS ###
-        self.goal_back_alignment_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
+        self.goal_second_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
         self.goal_first_target = (g.FIELD_X_MAX - 250, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
 
         self.current_target = None

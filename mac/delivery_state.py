@@ -1,8 +1,9 @@
+import math
 import globals_config as g
 from robot_controller import RobotController
 import numpy as np
 from robot_state import RobotState
-from pathfinding import (bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position)
+from pathfinding import (_correct_marker, bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, pix2world)
 import time
         
 def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotController):
@@ -78,42 +79,60 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         return RobotState.DELIVERY
 
     elif controller.delivery_stage == 2:
-        robot_vector = np.array(
-            back_marker) - np.array(front_marker)
-        desired_vector = np.array(
-            controller.goal_back_alignment_target) - np.array(back_marker)
 
-        dot = np.dot(robot_vector, desired_vector)
-        mag_r = np.linalg.norm(robot_vector)
-        mag_d = np.linalg.norm(desired_vector)
-        cos_theta = max(-1, min(1, dot / (mag_r * mag_d + 1e-6)))
-        angle_diff = np.degrees(np.arccos(cos_theta))
+        front_marker, center_marker, back_marker, _ = robot_info
+
+        bx, by = pix2world(controller.goal_second_target[:2])
+        (rx_p, ry_p), (fx_p, fy_p) = back_marker, front_marker
+        rx_w, ry_w = pix2world((rx_p, ry_p))
+        fx_w, fy_w = pix2world((fx_p, fy_p))
+        rx, ry = _correct_marker((rx_w, ry_w))
+        fx, fy = _correct_marker((fx_w, fy_w))
+
+        vector_to_ball = (bx - rx, by - ry)
+        vector_front = (fx - rx, fy - ry)
+
+        dot = vector_front[0] * vector_to_ball[0] + vector_front[1] * vector_to_ball[1]
+        mag_f = math.hypot(*vector_front)
+        mag_b = math.hypot(*vector_to_ball)
+        cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
+        angle_diff = math.degrees(math.acos(cos_theta))
+
+        cross_product = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
+        center = ((fx + rx) / 2, (fy + ry) / 2)
 
         print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
 
-        if angle_diff > 1.5:
-            robot_3d = np.append(robot_vector, 0)
-            desired_3d = np.append(desired_vector, 0)
-            cross_product = np.cross(robot_3d, desired_3d)[
-                2] 
-            if angle_diff > 25:
-                movement_command = "left"
-            elif angle_diff > 15:
-                movement_command = "medium_left"
-            else:
-                movement_command = "slow_left"
-            controller.send_command(movement_command)
-            return RobotState.DELIVERY
-        else:
+        if angle_diff < 1.5:
             controller.delivery_stage = 3
             return RobotState.DELIVERY
-
+        elif cross_product < 0:       
+            if angle_diff > 25:
+                movement_command = "fast_right"
+                controller.send_command(movement_command)
+            elif angle_diff > 15:
+                movement_command = "right"
+                controller.send_command(movement_command)
+            else:
+                movement_command = "medium_right"
+                controller.send_command(movement_command)
+        else:
+            if angle_diff > 25:
+                movement_command = "fast_left"
+                controller.send_command(movement_command)
+            elif angle_diff > 15:
+                movement_command = "left"
+                controller.send_command(movement_command)
+            else:
+                movement_command = "medium_left"
+                controller.send_command(movement_command)
+            
     elif controller.delivery_stage == 3:
-        dist_back = np.linalg.norm(
-            np.array(back_marker) - np.array(controller.goal_back_alignment_target))
-        print(f"[Stage 3] Distance to back_alignment: {dist_back:.2f}")
-        if dist_back > 115:
-            movement_command = "slow_backward"
+        dist_front = np.linalg.norm(
+            np.array(front_marker) - np.array(controller.goal_second_target))
+        print(f"[Stage 3] Distance to front_alignment: {dist_front:.2f}")
+        if dist_front > 20:
+            movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:
             controller.delivery_stage = 4
@@ -123,23 +142,6 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         print("[Stage 4] Sending delivery command")
         movement_command = "delivery"
         controller.send_command(movement_command)
-        controller.last_delivery_time = time.time()
-        controller.delivery_stage = 5
         return RobotState.DELIVERY
-    
-    elif controller.delivery_stage == 5:
-        if(time.time() - controller.last_delivery_time >= 5):
-            movement_command = "continue"
-            controller.send_command(movement_command)
-            controller.delivery_stage = 6
-            controller.last_delivery_time = time.time()
-            return RobotState.DELIVERY
-    elif controller.delivery_stage == 6:
-        if(time.time() - controller.last_delivery_time >= 5):
-            controller.delivery_stage = 0
-            controller.delivery_active = False
-            controller.waiting_for_continue = False
-            controller.last_delivery_count = len(ball_positions)
-            return RobotState.COLLECTION
-     
+         
     return RobotState.DELIVERY

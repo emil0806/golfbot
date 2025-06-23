@@ -211,9 +211,9 @@ def create_staging_point_edge(ball, offset_distance=200):
     return (x, y, r, o)
 
 
-def create_staging_point_corner(ball, field_bounds, offset_distance=350):
+def create_staging_point_corner(ball, offset_distance=300):
     x, y, r, o = ball
-    x_min, x_max, y_min, y_max = field_bounds
+    x_min, x_max, y_min, y_max = g.get_field_bounds()
 
     # Øverste venstre hjørne
     if x < x_min + 100 and y < y_min + 100:
@@ -232,7 +232,26 @@ def create_staging_point_corner(ball, field_bounds, offset_distance=350):
     return (x, y - offset_distance, r, o)
 
 
-# ------------------ ÆG-UNDVIGELSE ------------------
+def create_staging_point_cross(ball, offset_distance=250):
+    bx, by, r, o = ball
+    Xmin, Xmax, Ymin, Ymax = g.get_cross_bounds ()
+
+    cx = (Xmin + Xmax) // 2
+    cy = (Ymin + Ymax) // 2
+
+    dx = bx - cx 
+    dy = by - cy 
+
+    sign_x = 1 if dx >= 0 else -1
+    sign_y = 1 if dy >= 0 else -1
+
+    diagonal_distance = offset_distance / math.sqrt(2)
+
+    sx = cx + sign_x * diagonal_distance
+    sy = cy + sign_y * diagonal_distance
+
+    return (int(sx), int(sy), r, o)
+
 
 def _point_to_segment_distance(px, py, x1, y1, x2, y2):
     if (x1, y1) == (x2, y2):

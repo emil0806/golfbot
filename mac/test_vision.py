@@ -7,7 +7,7 @@ from robot_state import RobotState
 from setup import setup_cross_lines, setup_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
-from pathfinding import (bfs_path, get_cross_zones, get_grid_thresholds, get_simplified_path, get_simplified_target, get_zone_center, get_zone_for_position, sort_balls_by_distance,
+from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, zone_to_position)
 import globals_config as g
 
@@ -112,18 +112,20 @@ while True:
 
             bx, by = target_ball[:2]
 
-            field_bounds = g.get_field_bounds()
             for ball in pre_sorted_balls:
                 if is_corner_ball(ball):
-                    staged_balls.append((create_staging_point_corner(ball, field_bounds)))
+                    staged_balls.append((create_staging_point_corner(ball)))
                 elif is_edge_ball(ball):
                     staged_balls.append((create_staging_point_edge(ball)))
+                elif is_ball_in_cross(ball):
+                    staged_balls.append((create_staging_point_cross(ball)))
+
 
             robot_zone = get_zone_for_position(cx, cy)
             ball_zone = get_zone_for_position(bx, by)
             forbidden_zones = get_cross_zones()
 
-            path = bfs_path(robot_zone, ball_zone, forbidden_zones)
+            path = bfs_path(robot_zone, ball_zone, egg, cross, ball_position=target_ball[:2])
 
             if path and len(path) > 1:
                 controller.path_to_target = path
@@ -198,7 +200,7 @@ while True:
                 cv2.putText(frame, "Egg", (x - 20, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
                 
-        x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds(g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX)
+        x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds()
             
         for x in [x1, x2, x3, x4, x5, x6]:
             cv2.line(frame, (int(x), int(g.FIELD_Y_MIN)), (int(x), int(g.FIELD_Y_MAX)), (255, 255, 0), 2)

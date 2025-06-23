@@ -112,6 +112,7 @@ while True:
         stable_balls = stabilize_detections(current_balls, back_marker)
 
         ball_positions = stable_balls
+        controller.delivery_counter += 1
 
         if controller.state == RobotState.COLLECTION:
             print("test")
