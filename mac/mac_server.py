@@ -3,7 +3,6 @@ import socket
 import time
 import cv2
 from collection_state import handle_collection
-from corner_state import handle_corner
 from delivery_state import handle_delivery
 from robot_controller import RobotController
 from robot_state import RobotState
@@ -122,8 +121,6 @@ while True:
             new_state = handle_collection(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.DELIVERY:
             new_state = handle_delivery(robot_info, ball_positions, egg, cross, controller)
-        elif controller.state == RobotState.CORNER:
-            new_state = handle_corner(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.COMPLETE:
             break
 

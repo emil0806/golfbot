@@ -9,7 +9,7 @@ import globals_config as g
 ### FIELD IN MM ###
 FIELD_W, FIELD_H = 1800.0, 1200.0
 CAMERA_HEIGHT = 1510.0       # Hight above floor
-ROBOT_MARKER_HEIGHT = 190.0  # Robot hight above floor
+ROBOT_MARKER_HEIGHT = 200.0  # Robot hight above floor
 BALL_HEIGHT = 40.0
 
 # Factor < 1  (≈ 0.9)
@@ -189,7 +189,7 @@ def is_corner_ball(ball, margin=150):
 
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
 
-def is_edge_ball(ball, margin=150):
+def is_edge_ball(ball, margin=100):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
@@ -393,17 +393,6 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
     dx /= norm
     dy /= norm
 
-    # Forudsig hvor vi er om f.eks. 200 mm frem
-    lookahead = 150
-    ahead_x = fx_w + dx * lookahead
-    ahead_y = fy_w + dy * lookahead
-
-    # Er vi på vej udenfor banen?
-    moving_towards_edge = (
-        ahead_x < g.FIELD_X_MIN or ahead_x > g.FIELD_X_MAX or
-        ahead_y < g.FIELD_Y_MIN or ahead_y > g.FIELD_Y_MAX
-    )
-
     # Projektion fremad mod vægge
     max_dist = 9999
     if dx > 0:
@@ -422,7 +411,7 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
 
     travel_dist = min(dist_x, dist_y)
 
-    return moving_towards_edge and travel_dist < threshold
+    return travel_dist < threshold
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
     fx, fy = front_marker
