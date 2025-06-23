@@ -46,7 +46,7 @@ class RobotController:
         self.simplified_path = None
 
         ### TARGETS ###
-        self.goal_second_target = (g.FIELD_X_MAX - 20, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
+        self.goal_second_target = (1583, 545)
         self.goal_first_target = (g.FIELD_X_MAX - 250, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
 
         self.current_target = None

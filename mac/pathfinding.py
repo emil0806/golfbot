@@ -63,7 +63,7 @@ def sort_balls_by_distance(ball_positions, front_marker):
     sorted_balls = sorted(
         ball_positions,
         key=lambda ball: (
-            0 if ball[3] == 1 else 1,
+            1 if ball[3] == 1 else 0,
             math.hypot(ball[0] - fx, ball[1] - fy)
         )
     )
@@ -103,7 +103,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
     if angle_difference < 4:
         if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
-        elif close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker):
+        elif close_to_barrier(front_marker, back_marker):
             return "slow_backward"
         else:
             return "forward"
@@ -365,10 +365,9 @@ def close_to_cross(front_marker, back_marker, threshold=150):
 
     # Mindste afstand før vi rammer en væg
     travel_dist = min(dist_x, dist_y)
-
     return travel_dist < threshold
 
-def close_to_barrier(front_marker, back_marker, threshold=150):
+def close_to_barrier(front_marker, back_marker, threshold=200):
 
     fx, fy = front_marker
     bx, by = back_marker
@@ -407,7 +406,7 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
 
     return travel_dist < threshold
 
-def slow_down_close_to_barrier(front_marker, back_marker, threshold=200):
+def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
     fx, fy = front_marker
     bx, by = back_marker
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))

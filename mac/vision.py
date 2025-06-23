@@ -204,7 +204,7 @@ def detect_balls(frame, egg, back_marker, front_marker):
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
 aruco_params = cv2.aruco.DetectorParameters()
 
-def detect_robot(frame, target_id=42, scale=2):
+def detect_robot(frame, target_id=42, scale=1.8):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
     corners, ids, _ = detector.detectMarkers(gray)

@@ -131,7 +131,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_front = np.linalg.norm(
             np.array(front_marker) - np.array(controller.goal_second_target))
         print(f"[Stage 3] Distance to front_alignment: {dist_front:.2f}")
-        if dist_front > 20:
+        if dist_front > 40:
             movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:
