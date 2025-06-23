@@ -103,7 +103,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
     if angle_difference < 4:
         if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
-        elif close_to_barrier(front_marker, back_marker):
+        elif close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker):
             return "slow_backward"
         else:
             return "forward"
@@ -361,7 +361,7 @@ def close_to_cross(front_marker, back_marker, threshold=150):
 
     return min_dist < threshold
 
-def close_to_barrier(front_marker, back_marker, threshold=150):
+def close_to_barrier(front_marker, back_marker, threshold=200):
     fx, fy = front_marker
     bx, by = back_marker
 
@@ -374,11 +374,11 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
     norm = math.hypot(dx, dy)
     if norm == 0:
         return False
-    dx /= norm
-    dy /= norm
+    ux = dx / norm
+    uy = dy / norm
 
     extension = 5000  # mm – langt nok til at krydse en banegrænse
-    extended_front = (fx_w + dx * extension, fy_w + dy * extension)
+    extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
     robot_line = ((bx_w, by_w), extended_front)
     closest_dist = None
@@ -413,11 +413,11 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
     norm = math.hypot(dx, dy)
     if norm == 0:
         return False
-    dx /= norm
-    dy /= norm
+    ux = dx / norm
+    uy = dy / norm
 
     extension = 5000  # mm – langt nok til at krydse en banegrænse
-    extended_front = (fx_w + dx * extension, fy_w + dy * extension)
+    extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
     robot_line = ((bx_w, by_w), extended_front)
     closest_dist = None
@@ -438,6 +438,7 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
                     closest_dist = dist
 
     return closest_dist is not None and closest_dist < threshold
+
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     # Robot front marker
     fx, fy = robot
@@ -609,17 +610,23 @@ def is_ball_in_cross(best_ball):
         return False
     
 def find_line_intersection_from_lines(line1, line2):
+    if len(line1) == 4:
+        x1, y1, x2, y2 = line1
+    else:
+        (x1, y1), (x2, y2) = line1
 
-    (x1, y1), (x2, y2) = line1
-    (x3, y3), (x4, y4) = line2
+    if len(line2) == 4:
+        x3, y3, x4, y4 = line2
+    else:
+        (x3, y3), (x4, y4) = line2
 
     denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
     if denom == 0:
         return None  # Parallelle linjer
 
-    px = ((x1 * y2 - y1 * x2) * (x3 - x4) - 
+    px = ((x1 * y2 - y1 * x2) * (x3 - x4) -
           (x1 - x2) * (x3 * y4 - y3 * x4)) / denom
-    py = ((x1 * y2 - y1 * x2) * (y3 - y4) - 
+    py = ((x1 * y2 - y1 * x2) * (y3 - y4) -
           (y1 - y2) * (x3 * y4 - y3 * x4)) / denom
 
     return (px, py)

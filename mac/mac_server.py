@@ -73,8 +73,9 @@ last_command = None
 
 # ------ SETUP ------
 try:
-    cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
     setup_field_lines()
+    setup_cross_lines(cap, last_robot_info)
+    controller.set_delivery_targets()
     H = setup_homography()
     set_homography(H, frame_width, frame_height)
 except Exception as e:
@@ -211,6 +212,14 @@ while True:
                 x1, y1 = path_points[i][:2]
                 x2, y2 = path_points[i + 1][:2]
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
+
+        # Tegn FIELD_LINES (blå)
+        for x1, y1, x2, y2 in g.get_field_lines():
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Field", (cx - 20, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+
 
         cv2.imshow("Ball & Robot Detection", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):

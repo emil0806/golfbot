@@ -46,8 +46,8 @@ class RobotController:
         self.simplified_path = None
 
         ### TARGETS ###
-        self.goal_second_target = (1580, 550)
-        self.goal_first_target = (g.FIELD_X_MAX - 250, (g.FIELD_Y_MIN + g.FIELD_Y_MAX) // 2)
+        self.goal_second_target = None
+        self.goal_first_target = None
 
         self.current_target = None
 
@@ -112,5 +112,15 @@ class RobotController:
                 self.next_state_candidate = proposed_state
                 self.next_state_count = 1
 
+    def set_delivery_targets(self):
+        tr = g.PIX_FIELD_CORNERS[1]  # Top Right
+        br = g.PIX_FIELD_CORNERS[2]  # Bottom Right
+
+        mid_x = (tr[0] + br[0]) // 2
+        mid_y = (tr[1] + br[1]) // 2
+
+        self.goal_second_target = (mid_x, mid_y)
+
+        self.goal_first_target = (mid_x - 250, mid_y)
 
 
