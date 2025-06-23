@@ -275,7 +275,7 @@ def _point_to_segment_distance(px, py, x1, y1, x2, y2):
     return math.hypot(px - proj_x, py - proj_y)
 
 
-def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, threshold=40):
+def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40):
     # Robot front marker
     if len(center_marker) == 2:
         cx, cy = center_marker
@@ -321,7 +321,8 @@ def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, thresh
             return True
 
     # Tjek kryds
-    for (x1, y1, x2, y2) in cross:
+    cross_lines = g.get_cross_lines()
+    for (x1, y1, x2, y2) in cross_lines:
         midx, midy = (x1 + x2) / 2, (y1 + y2) / 2
         if dist_to_center(midx, midy) <= threshold:
             return True
@@ -511,7 +512,7 @@ def get_zone_center(zone):
     y = g.FIELD_Y_MIN + (row + 0.5) * zone_height
     return x, y
 
-def bfs_path(start_zone, goal_zone, eggs, crosses, ball_position=None):
+def bfs_path(start_zone, goal_zone, eggs, ball_position=None):
     queue = deque()
     queue.append((start_zone, [start_zone]))
     visited = set()
@@ -533,10 +534,10 @@ def bfs_path(start_zone, goal_zone, eggs, crosses, ball_position=None):
                     if neighbor == goal_zone and ball_position is not None:
                         dummy_ball = (*ball_position, 10, (255, 255, 255))
                         start_pos = zone_to_position(*current)
-                        if barrier_blocks_path(start_pos, dummy_ball, eggs, crosses):
+                        if barrier_blocks_path(start_pos, dummy_ball, eggs):
                             continue
                     else:
-                        if zone_path_is_blocked(current, neighbor, eggs, crosses):
+                        if zone_path_is_blocked(current, neighbor, eggs):
                             continue
 
                     visited.add(neighbor)
@@ -545,7 +546,7 @@ def bfs_path(start_zone, goal_zone, eggs, crosses, ball_position=None):
     return None
 
 
-def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
+def get_simplified_path(path_zones, center_marker, ball_pos, eggs):
 
     simplified_path = []
     current_pos = center_marker
@@ -558,7 +559,7 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
             target_pos = zone_to_position(*zone)
             dummy_target = (*target_pos, 10, (255, 255, 255))
 
-            if not barrier_blocks_path(current_pos, dummy_target, eggs, crosses):
+            if not barrier_blocks_path(current_pos, dummy_target, eggs):
                 simplified_path.append(target_pos)
                 current_pos = target_pos
                 i = j
@@ -576,13 +577,13 @@ def get_simplified_path(path_zones, center_marker, ball_pos, eggs, crosses):
 
     return simplified_path
 
-def zone_path_is_blocked(zone1, zone2, eggs, crosses):
+def zone_path_is_blocked(zone1, zone2, eggs):
     target_pos = zone_to_position(*zone2)
     dummy_ball = (*target_pos, 10, (255, 255, 255))
 
     center_pos = zone_to_position(*zone1)
 
-    return barrier_blocks_path(center_pos, dummy_ball, eggs, crosses, robot_radius=80, threshold=50)
+    return barrier_blocks_path(center_pos, dummy_ball, eggs, robot_radius=80, threshold=50)
 
 
 def get_grid_thresholds():

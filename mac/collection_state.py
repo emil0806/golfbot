@@ -63,10 +63,10 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         robot_zone = get_zone_for_position(cx, cy)
         ball_zone = get_zone_for_position(bx, by)
 
-        path = bfs_path(robot_zone, ball_zone, egg, cross, ball_position=target_ball[:2])
+        path = bfs_path(robot_zone, ball_zone, egg, ball_position=target_ball[:2])
 
         if path:
-            simplified = get_simplified_path(path, center_marker, target_ball, egg, cross)
+            simplified = get_simplified_path(path, center_marker, target_ball, egg)
 
             if is_edge_ball(original_ball) and not controller.edge_staging_reached:
                 simplified.append(original_ball[:2])

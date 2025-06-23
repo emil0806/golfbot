@@ -1,4 +1,6 @@
 import math
+import numpy as np
+
 ##### BORDER #####
 
 FIELD_X_MIN = None
@@ -76,9 +78,10 @@ def get_cross_bounds():
 def get_cross_center():
     return CROSS_CENTER
 
+
 def extract_cross_lines(detected_lines):
     if not detected_lines:
-        g.set_cross_lines([])
+        set_cross_lines([])
         return
 
     horizontal_lines = []
@@ -92,40 +95,72 @@ def extract_cross_lines(detected_lines):
         else:  # Vertikale linjer
             vertical_lines.append((x1, y1, x2, y2))
 
-    def average_line(lines):
-        if not lines:
-            return None
-        xs, ys = [], []
-        for x1, y1, x2, y2 in lines:
-            xs += [x1, x2]
-            ys += [y1, y2]
-        return (int(min(xs)), int(min(ys)), int(max(xs)), int(max(ys)))
-
-    horizontal_lines.sort(key=lambda l: (l[1] + l[3]) // 2)
-    vertical_lines.sort(key=lambda l: (l[0] + l[2]) // 2)
-
-    top_line = horizontal_lines[0] if horizontal_lines else None
-    bottom_line = horizontal_lines[-1] if len(horizontal_lines) > 1 else top_line
-    left_line = vertical_lines[0] if vertical_lines else None
-    right_line = vertical_lines[-1] if len(vertical_lines) > 1 else left_line
-
-    mid_horizontal = average_line([top_line, bottom_line]) if top_line else None
-    mid_vertical = average_line([left_line, right_line]) if left_line else None
+    horizontal_fit, m_h, c_h = fit_line_to_points(horizontal_lines, vertical=False)
+    vertical_fit, m_v, c_v = fit_line_to_points(vertical_lines, vertical=True)
 
     cross_lines = []
-    if mid_horizontal:
-        cross_lines.append(mid_horizontal)
-    if mid_vertical:
-        cross_lines.append(mid_vertical)
+    if horizontal_fit:
+        cross_lines.append(horizontal_fit)
+    if vertical_fit:
+        cross_lines.append(vertical_fit)
 
     set_cross_lines(cross_lines)
 
-    # Sæt bounds + center til brug i pathfinding
-    if mid_horizontal and mid_vertical:
-        x_min = min(mid_vertical[0], mid_vertical[2])
-        x_max = max(mid_vertical[0], mid_vertical[2])
-        y_min = min(mid_horizontal[1], mid_horizontal[3])
-        y_max = max(mid_horizontal[1], mid_horizontal[3])
-        center = ((x_min + x_max) // 2, (y_min + y_max) // 2)
-        set_cross_bounds({"x_min": x_min, "x_max": x_max,
-                            "y_min": y_min, "y_max": y_max}, center)
+    if m_h is not None and m_v is not None:
+        # Krydsningspunkt mellem y = m_h*x + c_h og x = m_v*y + c_v
+        # Løs for y: x = m_v*y + c_v  =>  y = (x - c_v) / m_v
+        # Indsæt i y = m_h*x + c_h: (x - c_v)/m_v = m_h*x + c_h
+        # Multiplicer igennem og isolér x:
+        try:
+            y_intersect = int((m_h * c_v + c_h) / (1 - m_h * m_v))
+            x_intersect = int(m_v * y_intersect + c_v)
+        except ZeroDivisionError:
+            x_intersect = y_intersect = 0  # fallback hvis linjerne er næsten parallelle
+
+        x_min = min(horizontal_fit[0], horizontal_fit[2], vertical_fit[0], vertical_fit[2])
+        x_max = max(horizontal_fit[0], horizontal_fit[2], vertical_fit[0], vertical_fit[2])
+        y_min = min(horizontal_fit[1], horizontal_fit[3], vertical_fit[1], vertical_fit[3])
+        y_max = max(horizontal_fit[1], horizontal_fit[3], vertical_fit[1], vertical_fit[3])
+
+        set_cross_bounds(
+            {"x_min": x_min, "x_max": x_max, "y_min": y_min, "y_max": y_max},
+            (x_intersect, y_intersect)
+        )
+
+def fit_line_to_points(lines, vertical=False):
+    if not lines:
+        return None, None, None
+
+    points = []
+    for x1, y1, x2, y2 in lines:
+        points.append((x1, y1))
+        points.append((x2, y2))
+
+    xs = np.array([p[0] for p in points])
+    ys = np.array([p[1] for p in points])
+
+    if len(xs) < 2:
+        return None, None, None
+
+    if vertical:
+        # Fit x = m*y + c
+        A = np.vstack([ys, np.ones(len(ys))]).T
+        m, c = np.linalg.lstsq(A, xs, rcond=None)[0]
+
+        y_min = int(np.min(ys))
+        y_max = int(np.max(ys))
+        x_min = int(m * y_min + c)
+        x_max = int(m * y_max + c)
+
+        return (x_min, y_min, x_max, y_max), m, c
+    else:
+        # Fit y = m*x + c
+        A = np.vstack([xs, np.ones(len(xs))]).T
+        m, c = np.linalg.lstsq(A, ys, rcond=None)[0]
+
+        x_min = int(np.min(xs))
+        x_max = int(np.max(xs))
+        y_min = int(m * x_min + c)
+        y_max = int(m * x_max + c)
+
+        return (x_min, y_min, x_max, y_max), m, c

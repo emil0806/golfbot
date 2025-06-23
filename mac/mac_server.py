@@ -219,6 +219,13 @@ while True:
             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
             cv2.putText(frame, "Field", (cx - 20, cy - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+            
+        # Tegn FIELD_LINES (blå)
+        for x1, y1, x2, y2 in g.get_cross_lines():
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Field", (cx - 20, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
 
         cv2.imshow("Ball & Robot Detection", frame)

@@ -44,10 +44,10 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
             robot_zone = get_zone_for_position(cx, cy)
             ball_zone = get_zone_for_position(bx, by)
 
-            path = bfs_path(robot_zone, ball_zone, egg, cross)
+            path = bfs_path(robot_zone, ball_zone, egg)
 
             if path:
-                simplified = get_simplified_path(path, center_marker, target_ball, egg, cross)
+                simplified = get_simplified_path(path, center_marker, target_ball, egg)
                 print(f"[Stage 1] Simplified path: {simplified}")
 
                 controller.simplified_path = simplified
