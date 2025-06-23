@@ -337,7 +337,6 @@ def close_to_cross(front_marker, back_marker, threshold=150):
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
     bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-    # Retningsvektor fra back til front i world-koordinater
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -346,45 +345,30 @@ def close_to_cross(front_marker, back_marker, threshold=150):
     dx /= norm
     dy /= norm
 
-    # Simulér en bevægelse fremad i retningsvektoren
-    lookahead = 150  # hvor langt vi "kigger frem" i mm
-    ahead_x = fx_w + dx * lookahead
-    ahead_y = fy_w + dy * lookahead
+    # Forlæng robotretning til en lang linje fremad
+    scale = 10000
+    rx1, ry1 = fx_w, fy_w
+    rx2, ry2 = fx_w + dx * scale, fy_w + dy * scale
+    robot_line = (rx1, ry1, rx2, ry2)
 
-    # Tjek om det punkt ligger inde i cross-zonen
-    in_cross = (g.CROSS_X_MIN <= ahead_x <= g.CROSS_X_MAX and
-                g.CROSS_Y_MIN <= ahead_y <= g.CROSS_Y_MAX)
+    min_dist = float("inf")
+    for cross_line in g.get_cross_lines():
+        intersection = find_line_intersection_from_lines(robot_line, cross_line)
+        if intersection:
+            ix, iy = intersection
+            dist = math.hypot(ix - fx_w, iy - fy_w)
+            min_dist = min(min_dist, dist)
 
-    # Som før: projektion mod nærmeste væg
-    max_dist = 9999
-    end_x, end_y = fx_w, fy_w
-
-    if dx > 0:
-        dist_x = (g.CROSS_X_MAX - end_x) / dx
-    elif dx < 0:
-        dist_x = (g.CROSS_X_MIN - end_x) / dx
-    else:
-        dist_x = max_dist
-
-    if dy > 0:
-        dist_y = (g.CROSS_Y_MAX - end_y) / dy
-    elif dy < 0:
-        dist_y = (g.CROSS_Y_MIN - end_y) / dy
-    else:
-        dist_y = max_dist
-
-    travel_dist = min(dist_x, dist_y)
-
-    # Aktiver kun hvis vi er tæt på OG kigger mod kryds
-    return in_cross and travel_dist < threshold
+    return min_dist < threshold
 
 def close_to_barrier(front_marker, back_marker, threshold=150):
     fx, fy = front_marker
     bx, by = back_marker
+
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
     bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-    # Retningsvektor fra back til front i world-koordinater
+    # Forlæng robotlinjen (front -> en langt punkt i samme retning)
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -393,33 +377,37 @@ def close_to_barrier(front_marker, back_marker, threshold=150):
     dx /= norm
     dy /= norm
 
-    # Projektion fremad mod vægge
-    max_dist = 9999
-    if dx > 0:
-        dist_x = (g.FIELD_X_MAX - fx_w) / dx
-    elif dx < 0:
-        dist_x = (g.FIELD_X_MIN - fx_w) / dx
-    else:
-        dist_x = max_dist
+    extension = 5000  # mm – langt nok til at krydse en banegrænse
+    extended_front = (fx_w + dx * extension, fy_w + dy * extension)
 
-    if dy > 0:
-        dist_y = (g.FIELD_Y_MAX - fy_w) / dy
-    elif dy < 0:
-        dist_y = (g.FIELD_Y_MIN - fy_w) / dy
-    else:
-        dist_y = max_dist
+    robot_line = ((bx_w, by_w), extended_front)
+    closest_dist = None
 
-    travel_dist = min(dist_x, dist_y)
+    for edge_line in g.FIELD_LINES:
+        intersection = find_line_intersection_from_lines(robot_line, edge_line)
+        if intersection:
+            ix, iy = intersection
 
-    return travel_dist < threshold
+            # Er skæringspunktet foran robotten?
+            to_point = (ix - bx_w, iy - by_w)
+            forward = (fx_w - bx_w, fy_w - by_w)
+            dot = to_point[0]*forward[0] + to_point[1]*forward[1]
+
+            if dot > 0:
+                dist = math.hypot(ix - fx_w, iy - fy_w)
+                if closest_dist is None or dist < closest_dist:
+                    closest_dist = dist
+
+    return closest_dist is not None and closest_dist < threshold
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
     fx, fy = front_marker
     bx, by = back_marker
+
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
     bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-    # Retningsvektor fra back til front i world-koordinater
+    # Forlæng robotlinjen (front -> en langt punkt i samme retning)
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -428,37 +416,28 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=250):
     dx /= norm
     dy /= norm
 
-    # Forudsig hvor vi er om f.eks. 200 mm frem
-    lookahead = 200
-    ahead_x = fx_w + dx * lookahead
-    ahead_y = fy_w + dy * lookahead
+    extension = 5000  # mm – langt nok til at krydse en banegrænse
+    extended_front = (fx_w + dx * extension, fy_w + dy * extension)
 
-    # Er vi på vej udenfor banen?
-    moving_towards_edge = (
-        ahead_x < g.FIELD_X_MIN or ahead_x > g.FIELD_X_MAX or
-        ahead_y < g.FIELD_Y_MIN or ahead_y > g.FIELD_Y_MAX
-    )
+    robot_line = ((bx_w, by_w), extended_front)
+    closest_dist = None
 
-    # Projektion fremad mod vægge
-    max_dist = 9999
-    if dx > 0:
-        dist_x = (g.FIELD_X_MAX - fx_w) / dx
-    elif dx < 0:
-        dist_x = (g.FIELD_X_MIN - fx_w) / dx
-    else:
-        dist_x = max_dist
+    for edge_line in g.FIELD_LINES:
+        intersection = find_line_intersection_from_lines(robot_line, edge_line)
+        if intersection:
+            ix, iy = intersection
 
-    if dy > 0:
-        dist_y = (g.FIELD_Y_MAX - fy_w) / dy
-    elif dy < 0:
-        dist_y = (g.FIELD_Y_MIN - fy_w) / dy
-    else:
-        dist_y = max_dist
+            # Er skæringspunktet foran robotten?
+            to_point = (ix - bx_w, iy - by_w)
+            forward = (fx_w - bx_w, fy_w - by_w)
+            dot = to_point[0]*forward[0] + to_point[1]*forward[1]
 
-    travel_dist = min(dist_x, dist_y)
+            if dot > 0:
+                dist = math.hypot(ix - fx_w, iy - fy_w)
+                if closest_dist is None or dist < closest_dist:
+                    closest_dist = dist
 
-    return moving_towards_edge and travel_dist < threshold
-
+    return closest_dist is not None and closest_dist < threshold
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
     # Robot front marker
     fx, fy = robot
@@ -628,3 +607,19 @@ def is_ball_in_cross(best_ball):
         return True
     else:
         return False
+    
+def find_line_intersection_from_lines(line1, line2):
+
+    (x1, y1), (x2, y2) = line1
+    (x3, y3), (x4, y4) = line2
+
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if denom == 0:
+        return None  # Parallelle linjer
+
+    px = ((x1 * y2 - y1 * x2) * (x3 - x4) - 
+          (x1 - x2) * (x3 * y4 - y3 * x4)) / denom
+    py = ((x1 * y2 - y1 * x2) * (y3 - y4) - 
+          (y1 - y2) * (x3 * y4 - y3 * x4)) / denom
+
+    return (px, py)

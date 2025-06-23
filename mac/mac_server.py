@@ -9,7 +9,7 @@ from robot_state import RobotState
 from pathfinding import draw_lines, get_grid_thresholds, set_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
-from setup import setup_cross_lines, setup_homography
+from setup import setup_cross_lines, setup_homography, setup_field_lines
 from config import EV3_IP, PORT
 import time
 import traceback
@@ -74,7 +74,7 @@ last_command = None
 # ------ SETUP ------
 try:
     cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
-
+    setup_field_lines()
     H = setup_homography()
     set_homography(H, frame_width, frame_height)
 except Exception as e:
