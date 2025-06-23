@@ -43,21 +43,7 @@ def setup_cross_lines(cap, last_robot_info):
 
     flat_cross = [c for sublist in cross_lines for c in sublist]
 
-    if flat_cross:
-        cx_min, cx_max, cy_min, cy_max = inside_field(flat_cross)
-        cross_center = ((cx_min + cx_max) // 2, (cy_min + cy_max) // 2)
-        cross_bounds = {
-            "x_min": cx_min,
-            "x_max": cx_max,
-            "y_min": cy_min,
-            "y_max": cy_max,
-        }
-    else:
-        cross_bounds = None
-        cross_center = None
-    g.set_cross_bounds(cross_bounds, cross_center)
-
-    return flat_cross, cross_center, egg, last_robot_info
+    g.extract_cross_lines(flat_cross)
 
 
 def setup_homography():
@@ -81,3 +67,7 @@ def setup_homography():
     H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
 
     return H
+
+def setup_field_lines():
+    g.set_field_lines_from_corners()
+    g.set_field_bounds_by_corners()
