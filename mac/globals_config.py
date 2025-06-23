@@ -9,10 +9,10 @@ FIELD_Y_MIN = None
 FIELD_Y_MAX = None
 
 PIX_FIELD_CORNERS = [
-    (305,  65),     # TL
-    (1635, 65),     # TR
-    (1635, 1050),   # BR
-    (305,  1050)    # BL
+    (313, 70),     # TL
+    (1610, 76),     # TR
+    (1624, 1044),   # BR
+    (302, 1016)  # BL
 ]
 
 FIELD_LINES = []
@@ -105,12 +105,9 @@ def extract_cross_lines(detected_lines):
         cross_lines.append(vertical_fit)
 
     set_cross_lines(cross_lines)
+    print(f"c: {cross_lines}")
 
-    if m_h is not None and m_v is not None:
-        # Krydsningspunkt mellem y = m_h*x + c_h og x = m_v*y + c_v
-        # Løs for y: x = m_v*y + c_v  =>  y = (x - c_v) / m_v
-        # Indsæt i y = m_h*x + c_h: (x - c_v)/m_v = m_h*x + c_h
-        # Multiplicer igennem og isolér x:
+    if m_h is not None and m_v is not None:   
         try:
             y_intersect = int((m_h * c_v + c_h) / (1 - m_h * m_v))
             x_intersect = int(m_v * y_intersect + c_v)

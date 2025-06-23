@@ -17,7 +17,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     cx, cy = center_marker
 
 
-    if(len(ball_positions) < 1 and controller.delivery_counter > 10):
+    if(len(ball_positions) < 1 and controller.delivery_counter > 20):
         return RobotState.DELIVERY
 
     pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)

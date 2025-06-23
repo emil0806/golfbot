@@ -82,12 +82,9 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
 
         front_marker, center_marker, back_marker, _ = robot_info
 
-        bx, by = pix2world(controller.goal_second_target[:2])
-        (rx_p, ry_p), (fx_p, fy_p) = back_marker, front_marker
-        rx_w, ry_w = pix2world((rx_p, ry_p))
-        fx_w, fy_w = pix2world((fx_p, fy_p))
-        rx, ry = _correct_marker((rx_w, ry_w))
-        fx, fy = _correct_marker((fx_w, fy_w))
+        bx, by = controller.goal_second_target[:2]
+        rx, ry = _correct_marker(back_marker)
+        fx, fy = _correct_marker(front_marker)
 
         vector_to_ball = (bx - rx, by - ry)
         vector_front = (fx - rx, fy - ry)
