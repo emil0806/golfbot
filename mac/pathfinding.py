@@ -9,12 +9,13 @@ import globals_config as g
 ### FIELD IN MM ###
 FIELD_W, FIELD_H = 1800.0, 1200.0
 CAMERA_HEIGHT = 1510.0       # Hight above floor
-ROBOT_MARKER_HEIGHT = 145.0  # Robot hight above floor
+ROBOT_MARKER_HEIGHT = 190.0  # Robot hight above floor
+BALL_HEIGHT = 40.0
 
 # Factor < 1  (≈ 0.9)
 _MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
 
-_CAMERA_CENTER_WORLD = (FIELD_W / 2.0, FIELD_H / 2.0)
+_CAMERA_CENTER_WORLD = None
 
 
 def _correct_marker(world_pt):
@@ -23,12 +24,23 @@ def _correct_marker(world_pt):
     dy = (world_pt[1] - cy) * _MARKER_SCALE
     return (cx + dx, cy + dy)
 
+def _correct_ball(world_pt):
+    BALL_SCALE = (CAMERA_HEIGHT - BALL_HEIGHT) / CAMERA_HEIGHT
+    cx, cy = _CAMERA_CENTER_WORLD
+    dx = (world_pt[0] - cx) * BALL_SCALE
+    dy = (world_pt[1] - cy) * BALL_SCALE
+    return (cx + dx, cy + dy)
+
 H = None
 
 
-def set_homography(H_matrix):
-    global H
+def set_homography(H_matrix, image_width=640, image_height=480):
+    global H, _CAMERA_CENTER_WORLD
     H = H_matrix
+
+    # Find kameracentrum i pixel og konverter til world-koordinater
+    image_center_px = (image_width / 2, image_height / 2)
+    _CAMERA_CENTER_WORLD = pix2world(image_center_px)
 
 def pix2world(pt):
     if H is None:
@@ -67,7 +79,8 @@ def determine_direction(robot_info, ball_position, crosses=None):
     front_marker, center_marker, back_marker, _ = robot_info
     crosses = crosses or []
 
-    bx, by = pix2world(ball_position[:2])
+    bx_raw, by_raw = pix2world(ball_position[:2])
+    bx, by = _correct_ball((bx_raw, by_raw))
     (rx_p, ry_p), (fx_p, fy_p) = back_marker, front_marker
     rx_w, ry_w = pix2world((rx_p, ry_p))
     fx_w, fy_w = pix2world((fx_p, fy_p))
@@ -90,7 +103,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
     if angle_difference < 4:
         if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
-        elif close_to_barrier(front_marker, back_marker):
+        elif close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker):
             return "slow_backward"
         else:
             return "forward"
@@ -317,8 +330,45 @@ def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, thresh
 
 
     return False
+def close_to_cross(front_marker, back_marker, threshold=150):
+    fx, fy = front_marker
+    bx, by = back_marker
+    fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
+    bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-def close_to_barrier(front_marker, back_marker, threshold=100):
+    # Retningsvektor fra back til front i world-koordinater
+    dx = fx_w - bx_w
+    dy = fy_w - by_w
+    norm = math.hypot(dx, dy)
+    if norm == 0:
+        return False
+    dx /= norm
+    dy /= norm
+
+    # Projektion fremad mod nærmeste væg
+    max_dist = 9999
+    end_x, end_y = fx_w, fy_w
+
+    if dx > 0:
+        dist_x = (g.CROSS_X_MAX - end_x) / dx
+    elif dx < 0:
+        dist_x = (g.CROSS_X_MIN - end_x) / dx
+    else:
+        dist_x = max_dist
+
+    if dy > 0:
+        dist_y = (g.CROSS_Y_MAX - end_y) / dy
+    elif dy < 0:
+        dist_y = (g.CROSS_Y_MIN - end_y) / dy
+    else:
+        dist_y = max_dist
+
+    # Mindste afstand før vi rammer en væg
+    travel_dist = min(dist_x, dist_y)
+
+    return travel_dist < threshold
+
+def close_to_barrier(front_marker, back_marker, threshold=150):
 
     fx, fy = front_marker
     bx, by = back_marker

@@ -7,7 +7,7 @@ from corner_state import handle_corner
 from delivery_state import handle_delivery
 from robot_controller import RobotController
 from robot_state import RobotState
-from pathfinding import (draw_lines, get_grid_thresholds)
+from pathfinding import draw_lines, get_grid_thresholds, set_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
 from setup import setup_cross_lines, setup_homography
@@ -31,6 +31,8 @@ print(f"Connection established with EV3 at {addr}")
 
 ### CAMERA FEED ###
 cap = cv2.VideoCapture(0)
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 ### CONTROLLER ###
 controller = RobotController(conn)
@@ -75,6 +77,7 @@ try:
     cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
 
     H = setup_homography()
+    set_homography(H, frame_width, frame_height)
 except Exception as e:
     print(f"[ERROR] Programmet stødte på en fejl: {e}")
     traceback.print_exc()
