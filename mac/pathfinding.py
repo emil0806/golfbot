@@ -133,19 +133,16 @@ def prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses, fo
     rx, ry = back_marker
     bx, by = ball_position[:2]
 
-    # Beregn fremad-position
     direction_vec = (fx - rx, fy - ry)
     mag = math.hypot(*direction_vec) or 1.0
     ux, uy = direction_vec[0] / mag, direction_vec[1] / mag
     forward_pos = (fx + ux * forward_distance, fy + uy * forward_distance)
 
-    # Afstand før og efter
     dist_now = math.hypot(bx - fx, by - fy)
     dist_next = math.hypot(bx - forward_pos[0], by - forward_pos[1])
 
     dummy_forward = (*forward_pos, 10, (255, 255, 255))
 
-    # Hvis vi ikke rammer noget, og det hjælper
     if not barrier_blocks_path(front_marker, dummy_forward, [], crosses):
         if dist_next < dist_now:
             return True
@@ -498,19 +495,26 @@ def zone_path_is_blocked(zone1, zone2, eggs, crosses):
     return barrier_blocks_path(center_pos, dummy_ball, eggs, crosses, robot_radius=80, threshold=50)
 
 
-def get_grid_thresholds(FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX):
-    x1 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (1 / 7)
-    x2 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (2 / 7)
-    x3 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (3 / 7)
-    x4 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (4 / 7)
-    x5 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (5 / 7)
-    x6 = FIELD_X_MIN + (FIELD_X_MAX - FIELD_X_MIN) * (6 / 7)
+def get_grid_thresholds():
+    x1 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (1 / 7)
+    x2 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (2 / 7)
+    x3 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (3 / 7)
+    x4 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (4 / 7)
+    x5 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (5 / 7)
+    x6 = g.FIELD_X_MIN + (g.FIELD_X_MAX - g.FIELD_X_MIN) * (6 / 7)
 
-    y1 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (1 / 7)
-    y2 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (2 / 7)
-    y3 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (3 / 7)
-    y4 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (4 / 7)
-    y5 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (5 / 7)
-    y6 = FIELD_Y_MIN + (FIELD_Y_MAX - FIELD_Y_MIN) * (6 / 7)
+    y1 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (1 / 7)
+    y2 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (2 / 7)
+    y3 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (3 / 7)
+    y4 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (4 / 7)
+    y5 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (5 / 7)
+    y6 = g.FIELD_Y_MIN + (g.FIELD_Y_MAX - g.FIELD_Y_MIN) * (6 / 7)
 
     return x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6
+
+def is_ball_in_cross(best_ball):
+    bx, by = best_ball[:2]
+    if (bx >= g.CROSS_X_MIN and bx <= g.CROSS_X_MAX and by >= g.CROSS_Y_MIN and by <= g.CROSS_Y_MAX):
+        return True
+    else:
+        return False

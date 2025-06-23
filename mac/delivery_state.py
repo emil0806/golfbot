@@ -123,14 +123,23 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         print("[Stage 4] Sending delivery command")
         movement_command = "delivery"
         controller.send_command(movement_command)
-        time.sleep(5)
-        movement_command = "continue"
-        controller.send_command(movement_command)
-        time.sleep(2)
-        controller.delivery_stage = 0
-        controller.delivery_active = False
-        controller.waiting_for_continue = False
-        controller.last_delivery_count = len(ball_positions)
-        return RobotState.COLLECTION
-        
+        controller.last_delivery_time = time.time()
+        controller.delivery_stage = 5
+        return RobotState.DELIVERY
+    
+    elif controller.delivery_stage == 5:
+        if(time.time() - controller.last_delivery_time >= 5):
+            movement_command = "continue"
+            controller.send_command(movement_command)
+            controller.delivery_stage = 6
+            controller.last_delivery_time = time.time()
+            return RobotState.DELIVERY
+    elif controller.delivery_stage == 6:
+        if(time.time() - controller.last_delivery_time >= 5):
+            controller.delivery_stage = 0
+            controller.delivery_active = False
+            controller.waiting_for_continue = False
+            controller.last_delivery_count = len(ball_positions)
+            return RobotState.COLLECTION
+     
     return RobotState.DELIVERY

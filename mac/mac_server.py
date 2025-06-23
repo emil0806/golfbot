@@ -196,7 +196,7 @@ while True:
 
             cv2.circle(frame, (center_x, center_y), rotation_radius, (255, 255, 255), 2)
 
-        x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds(g.FIELD_X_MIN, g.FIELD_X_MAX, g.FIELD_Y_MIN, g.FIELD_Y_MAX)
+        x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds()
         
         for x in [x1, x2, x3, x4, x5, x6]:
             cv2.line(frame, (int(x), int(g.FIELD_Y_MIN)), (int(x), int(g.FIELD_Y_MAX)), (255, 255, 0), 2)
