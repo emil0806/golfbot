@@ -343,8 +343,7 @@ def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40)
 
     return False
 
-def close_to_cross(front_marker, back_marker, threshold=50):
-    print(f"too close")
+def close_to_cross(front_marker, back_marker, threshold=100):
     fx, fy = front_marker
     bx, by = back_marker
 
@@ -386,11 +385,9 @@ def close_to_cross(front_marker, back_marker, threshold=50):
                 if closest_dist is None or dist < closest_dist:
                     closest_dist = dist
 
-    print(f"cccc: {closest_dist is not None and closest_dist < threshold}")
     return closest_dist is not None and closest_dist < threshold
 
-def close_to_barrier(front_marker, back_marker, threshold=50):
-    print(f"too close")
+def close_to_barrier(front_marker, back_marker, threshold=55):
     fx, fy = front_marker
     bx, by = back_marker
 

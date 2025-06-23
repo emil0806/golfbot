@@ -128,14 +128,57 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_front = np.linalg.norm(
             np.array(front_marker) - np.array(controller.goal_second_target))
         print(f"[Stage 3] Distance to front_alignment: {dist_front:.2f}")
-        if dist_front > 30:
+        if dist_front > 60:
             movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:
             controller.delivery_stage = 4
         return RobotState.DELIVERY
-
+    
     elif controller.delivery_stage == 4:
+
+        front_marker, center_marker, back_marker, _ = robot_info
+
+        bx, by = controller.goal_second_target[:2]
+        rx, ry = _correct_marker(back_marker)
+        fx, fy = _correct_marker(front_marker)
+
+        vector_to_ball = (bx - rx, by - ry)
+        vector_front = (fx - rx, fy - ry)
+
+        dot = vector_front[0] * vector_to_ball[0] + vector_front[1] * vector_to_ball[1]
+        mag_f = math.hypot(*vector_front)
+        mag_b = math.hypot(*vector_to_ball)
+        cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
+        angle_diff = math.degrees(math.acos(cos_theta))
+
+        cross_product = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
+        center = ((fx + rx) / 2, (fy + ry) / 2)
+
+        print(f"[Stage 4] Angle to target: {angle_diff:.2f}")
+
+        if angle_diff < 1:
+            controller.delivery_stage = 5
+            return RobotState.DELIVERY
+        elif cross_product < 0:       
+                movement_command = "slow_right"
+                controller.send_command(movement_command)
+        else:
+                movement_command = "slow_left"
+                controller.send_command(movement_command)
+
+    elif controller.delivery_stage == 5:
+        dist_front = np.linalg.norm(
+            np.array(front_marker) - np.array(controller.goal_second_target))
+        print(f"[Stage 3] Distance to front_alignment: {dist_front:.2f}")
+        if dist_front > 40:
+            movement_command = "slow_forward"
+            controller.send_command(movement_command)
+        else:
+            controller.delivery_stage = 6
+        return RobotState.DELIVERY
+
+    elif controller.delivery_stage == 6:
         print("[Stage 4] Sending delivery command")
         movement_command = "delivery"
         controller.send_command(movement_command)

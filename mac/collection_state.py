@@ -83,7 +83,6 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
         
     if controller.simplified_path:
-        print(f"simple path: {controller.simplified_path}")
         next_target = controller.simplified_path[0]
 
         zx, zy = next_target[:2]
