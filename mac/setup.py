@@ -79,5 +79,5 @@ def setup_homography():
     ])
 
     H, _ = cv2.findHomography(PIX_CORNERS, WORLD_CORNERS)
-    set_homography(H)  # Saves in pathfinding.py
+
     return H

@@ -15,7 +15,7 @@ BALL_HEIGHT = 40.0
 # Factor < 1  (≈ 0.9)
 _MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
 
-_CAMERA_CENTER_WORLD = (FIELD_W / 2.0, FIELD_H / 2.0)
+_CAMERA_CENTER_WORLD = None
 
 
 def _correct_marker(world_pt):
@@ -34,9 +34,13 @@ def _correct_ball(world_pt):
 H = None
 
 
-def set_homography(H_matrix):
-    global H
+def set_homography(H_matrix, image_width=640, image_height=480):
+    global H, _CAMERA_CENTER_WORLD
     H = H_matrix
+
+    # Find kameracentrum i pixel og konverter til world-koordinater
+    image_center_px = (image_width / 2, image_height / 2)
+    _CAMERA_CENTER_WORLD = pix2world(image_center_px)
 
 def pix2world(pt):
     if H is None:
