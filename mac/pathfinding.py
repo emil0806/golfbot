@@ -90,7 +90,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
     if angle_difference < 4:
         if slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
-        elif close_to_barrier(front_marker):
+        elif close_to_barrier(front_marker, back_marker):
             return "slow_backward"
         else:
             return "forward"
@@ -299,19 +299,46 @@ def barrier_blocks_path(center_marker, ball, egg, cross, robot_radius=80, thresh
 
     return False
 
-def close_to_barrier(front_marker):
+def close_to_barrier(front_marker, back_marker, threshold=100):
 
-    if g.FIELD_X_MIN + 150 > front_marker[0]:
-        return True
-    if g.FIELD_X_MAX - 150 < front_marker[0]:
-        return True
-    if g.FIELD_Y_MIN + 150 > front_marker[1]:
-        return True
-    if g.FIELD_Y_MAX - 150 < front_marker[1]:
-        return True
-    return False
+    fx, fy = front_marker
+    bx, by = back_marker
+    fx_w, fy_w = _correct_marker(pix2world((fx, fy)))
+    bx_w, by_w = _correct_marker(pix2world((bx, by)))
 
-def slow_down_close_to_barrier(front_marker, back_marker, threshold=300):
+    # Retningsvektor fra back til front i world-koordinater
+    dx = fx_w - bx_w
+    dy = fy_w - by_w
+    norm = math.hypot(dx, dy)
+    if norm == 0:
+        return False
+    dx /= norm
+    dy /= norm
+
+    # Projektion fremad mod nærmeste væg
+    max_dist = 9999
+    end_x, end_y = fx_w, fy_w
+
+    if dx > 0:
+        dist_x = (g.FIELD_X_MAX - end_x) / dx
+    elif dx < 0:
+        dist_x = (g.FIELD_X_MIN - end_x) / dx
+    else:
+        dist_x = max_dist
+
+    if dy > 0:
+        dist_y = (g.FIELD_Y_MAX - end_y) / dy
+    elif dy < 0:
+        dist_y = (g.FIELD_Y_MIN - end_y) / dy
+    else:
+        dist_y = max_dist
+
+    # Mindste afstand før vi rammer en væg
+    travel_dist = min(dist_x, dist_y)
+
+    return travel_dist < threshold
+
+def slow_down_close_to_barrier(front_marker, back_marker, threshold=200):
     fx, fy = front_marker
     bx, by = back_marker
     fx_w, fy_w = _correct_marker(pix2world((fx, fy)))

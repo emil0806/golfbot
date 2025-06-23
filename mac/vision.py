@@ -11,22 +11,58 @@ stable_balls        = []             # [(x,y,r,color,missing_frames)]
 ball_history        = deque(maxlen=5)
 COLLECT_DIST_PIX      = 60           # hvor tæt bag-markøren skal være før bold "forsvinder"
 
-def stabilize_detections(current_balls, history, distance_threshold=10):
-    filtered = []
-    for b in current_balls:
-        bx, by, br, bcolor = b
-        if not any(np.linalg.norm(np.array((bx, by)) - np.array((fx, fy))) < distance_threshold and bcolor == fcolor
-                   for fx, fy, _, fcolor in filtered):
-            filtered.append(b)
 
-    for past_frame in history:
-        for pb in past_frame:
-            px, py, pr, pcolor = pb
-            if not any(np.linalg.norm(np.array((px, py)) - np.array((fx, fy))) < distance_threshold and pcolor == fcolor
-                       for fx, fy, _, fcolor in filtered):
-                filtered.append(pb)
+def stabilize_detections(current_balls, robot_px, distance_threshold=10):
+    global stable_balls, ball_history
 
-    return filtered
+    MIN_FRAMES_FOR_STABLE = 10
+    MAX_FRAMES_MISSING_AFTER_ROBOT = 3
+    MAX_FRAMES_MISSING_TOTAL = 10
+
+    # --------- Opdater historik ---------
+    ball_history = deque(list(ball_history), maxlen=MIN_FRAMES_FOR_STABLE)
+    ball_history.append(list(current_balls))
+
+    # --------- Nye bolde (bliver stabile hvis set i alle frames) ---------
+    candidates = {}
+    for frame in ball_history:
+        for (x, y, r, col) in frame:
+            key = (round(x / distance_threshold),
+                   round(y / distance_threshold), col)
+            candidates.setdefault(key, []).append((x, y, r, col))
+
+    for _, detections in candidates.items():
+        if len(detections) >= MIN_FRAMES_FOR_STABLE:
+            xs, ys, rs = zip(*[(d[0], d[1], d[2]) for d in detections])
+            new_ball = (int(np.mean(xs)), int(np.mean(ys)),
+                        int(np.mean(rs)), detections[0][3], 0, 0)  # miss=0, total_miss=0
+            if not any(np.hypot(sb[0] - new_ball[0], sb[1] - new_ball[1]) < distance_threshold
+                       and sb[3] == new_ball[3] for sb in stable_balls):
+                stable_balls.append(new_ball)
+
+    # --------- Opdater eksisterende stabile bolde ---------
+    updated = []
+    for (sx, sy, sr, scol, miss, total_miss) in stable_balls:
+        visible = any(np.hypot(sx - cb[0], sy - cb[1]) < distance_threshold and cb[3] == scol
+                      for cb in current_balls)
+
+        if visible:
+            updated.append((sx, sy, sr, scol, 0, 0))  # nulstil tællere
+            continue
+
+        # Hvis uset: tæl miss og total_miss
+        new_miss = miss
+        new_total_miss = total_miss + 1
+
+        if robot_px and math.hypot(sx - robot_px[0], sy - robot_px[1]) < COLLECT_DIST_PIX:
+            new_miss += 1
+
+        # Fjern bolden hvis én af de to betingelser opfyldes
+        if new_miss < MAX_FRAMES_MISSING_AFTER_ROBOT and new_total_miss < MAX_FRAMES_MISSING_TOTAL:
+            updated.append((sx, sy, sr, scol, new_miss, new_total_miss))
+
+    stable_balls = updated
+    return [(x, y, r, col) for x, y, r, col, _, _ in stable_balls]
 
 def detect_balls(frame, egg, back_marker, front_marker):
     # Konverter til LAB og split kanaler
