@@ -18,7 +18,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
     corner_balls = [b for b in ball_positions if is_corner_ball(b)]
 
-    if(len(ball_positions) in [0, 4, 8] and len(ball_positions) != controller.last_delivery_count):
+    if(len(ball_positions) > 15 and len(ball_positions) != controller.last_delivery_count):
         return RobotState.DELIVERY
     else:
         if len(corner_balls) != len(ball_positions):

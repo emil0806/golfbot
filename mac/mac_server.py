@@ -108,11 +108,9 @@ while True:
         egg = detect_egg(frame, back_marker, front_marker)
         
         current_balls = detect_balls(frame, egg, back_marker, front_marker)
-        
-        robot_px = back_marker  # bag-markør i pixel
-        
-        stable_balls = stabilize_detections(current_balls, robot_px)
-        
+                
+        stable_balls = stabilize_detections(current_balls, back_marker)
+
         ball_positions = stable_balls
 
         if controller.state == RobotState.COLLECTION:

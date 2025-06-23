@@ -9,15 +9,15 @@ import globals_config as g
 # ----------  BALL STABILISERING  ----------
 stable_balls        = []             # [(x,y,r,color,missing_frames)]
 ball_history        = deque(maxlen=5)
-COLLECT_DIST_PIX      = 60           # hvor tæt bag-markøren skal være før bold "forsvinder"
+COLLECT_DIST_PIX      = 40           # hvor tæt bag-markøren skal være før bold "forsvinder"
 
 
 def stabilize_detections(current_balls, robot_px, distance_threshold=10):
     global stable_balls, ball_history
 
-    MIN_FRAMES_FOR_STABLE = 10
-    MAX_FRAMES_MISSING_AFTER_ROBOT = 3
-    MAX_FRAMES_MISSING_TOTAL = 10
+    MIN_FRAMES_FOR_STABLE = 5
+    MAX_FRAMES_MISSING_AFTER_ROBOT = 20
+    MAX_FRAMES_MISSING_TOTAL = 20
 
     # --------- Opdater historik ---------
     ball_history = deque(list(ball_history), maxlen=MIN_FRAMES_FOR_STABLE)
@@ -188,7 +188,7 @@ def detect_balls(frame, egg, back_marker, front_marker):
             if back_marker:
                 dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(back_marker))
                 dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
-                is_inside_robot = dist_to_back < 60 or dist_to_front < 80
+                is_inside_robot = False
 
             if not is_inside_egg and not is_inside_robot:
                 if is_white:

@@ -95,10 +95,10 @@ def determine_direction(robot_info, ball_position, crosses=None):
         else:
             return "forward"
     elif cross < 0:
-        if rotation_risk:
-            if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
-                return "forward"
-            return "slow_backward"        
+        #if rotation_risk:
+        #    if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
+        #        return "forward"
+        #    return "slow_backward"        
         if angle_difference > 25:
                         return "fast_right"
         elif angle_difference > 15:
@@ -106,10 +106,10 @@ def determine_direction(robot_info, ball_position, crosses=None):
         else:
             return "medium_right"
     else:
-        if rotation_risk:
-            if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
-                return "forward"
-            return "slow_backward" 
+        #if rotation_risk:
+        #    if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
+        #        return "forward"
+        #    return "slow_backward" 
         if angle_difference > 25:
             return "fast_left"
         elif angle_difference > 15:
