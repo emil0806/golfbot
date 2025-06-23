@@ -9,7 +9,8 @@ import globals_config as g
 ### FIELD IN MM ###
 FIELD_W, FIELD_H = 1800.0, 1200.0
 CAMERA_HEIGHT = 1510.0       # Hight above floor
-ROBOT_MARKER_HEIGHT = 145.0  # Robot hight above floor
+ROBOT_MARKER_HEIGHT = 190.0  # Robot hight above floor
+BALL_HEIGHT = 40.0
 
 # Factor < 1  (≈ 0.9)
 _MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
@@ -21,6 +22,13 @@ def _correct_marker(world_pt):
     cx, cy = _CAMERA_CENTER_WORLD
     dx = (world_pt[0] - cx) * _MARKER_SCALE
     dy = (world_pt[1] - cy) * _MARKER_SCALE
+    return (cx + dx, cy + dy)
+
+def _correct_ball(world_pt):
+    BALL_SCALE = (CAMERA_HEIGHT - BALL_HEIGHT) / CAMERA_HEIGHT
+    cx, cy = _CAMERA_CENTER_WORLD
+    dx = (world_pt[0] - cx) * BALL_SCALE
+    dy = (world_pt[1] - cy) * BALL_SCALE
     return (cx + dx, cy + dy)
 
 H = None
@@ -67,7 +75,8 @@ def determine_direction(robot_info, ball_position, crosses=None):
     front_marker, center_marker, back_marker, _ = robot_info
     crosses = crosses or []
 
-    bx, by = pix2world(ball_position[:2])
+    bx_raw, by_raw = pix2world(ball_position[:2])
+    bx, by = _correct_ball((bx_raw, by_raw))
     (rx_p, ry_p), (fx_p, fy_p) = back_marker, front_marker
     rx_w, ry_w = pix2world((rx_p, ry_p))
     fx_w, fy_w = pix2world((fx_p, fy_p))
