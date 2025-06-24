@@ -92,7 +92,6 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         angle_diff = math.degrees(math.acos(cos_theta))
 
         cross_product = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
-        center = ((fx + rx) / 2, (fy + ry) / 2)
 
         print(f"[Stage 2] Angle to target: {angle_diff:.2f}")
 
@@ -149,7 +148,6 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         angle_diff = math.degrees(math.acos(cos_theta))
 
         cross_product = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
-        center = ((fx + rx) / 2, (fy + ry) / 2)
 
         print(f"[Stage 4] Angle to target: {angle_diff:.2f}")
 
@@ -192,7 +190,6 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         angle_diff = math.degrees(math.acos(cos_theta))
 
         cross_product = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
-        center = ((fx + rx) / 2, (fy + ry) / 2)
 
         print(f"[Stage 6] Angle to target: {angle_diff:.2f}")
 

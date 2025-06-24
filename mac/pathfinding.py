@@ -5,7 +5,7 @@ import cv2
 import globals_config as g
 
 
-# =============== 3-D KORREKTION ====================
+# =============== 3-D CORRECTION ====================
 ### FIELD IN MM ###
 FIELD_W, FIELD_H = 1800.0, 1200.0
 CAMERA_HEIGHT = 1510.0       # Hight above floor
@@ -18,11 +18,11 @@ _MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
 
 _CAMERA_CENTER_WORLD = None
 
-# Billedstørrelse (pixel)
+# Image size (pixel)
 IMAGE_WIDTH = 1920
 IMAGE_HEIGHT = 1080
 
-# Center i billedet
+# Center of image
 PIXEL_CX = IMAGE_WIDTH / 2
 PIXEL_CY = IMAGE_HEIGHT / 2
 
@@ -49,7 +49,6 @@ def set_homography(H_matrix, image_width, image_height):
     global H, _CAMERA_CENTER_WORLD
     H = H_matrix
 
-    # Find kameracentrum i pixel og konverter til world-koordinater
     image_center_px = (image_width / 2, image_height / 2)
     _CAMERA_CENTER_WORLD = pix2world(image_center_px)
 
@@ -127,10 +126,7 @@ def determine_direction(robot_info, ball_position, egg, crosses=None):
     angle_difference = math.degrees(math.acos(cos_theta))
     distance_to_ball = mag_b
 
-
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
-    center = ((fx + rx) / 2, (fy + ry) / 2)
-    rotation_risk = will_rotation_hit_cross(center, radius=130, cross_lines=crosses)
 
     if angle_difference < 4:
         if close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker) or close_to_egg(front_marker, back_marker, egg):
@@ -158,53 +154,6 @@ def determine_direction(robot_info, ball_position, egg, crosses=None):
         else:
             return "medium_left"
         
-def will_rotation_hit_cross(center, radius, cross_lines, angle_step=30, threshold=40):
-    for deg in range(0, 360, angle_step):
-        rad = math.radians(deg)
-        px = center[0] + radius * math.cos(rad)
-        py = center[1] + radius * math.sin(rad)
-        for (x1, y1, x2, y2) in cross_lines:
-            d = _point_to_segment_distance(px, py, x1, y1, x2, y2)
-            if d < threshold:
-                return True
-    return False
-
-def prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses, forward_distance=30):
-    fx, fy = front_marker
-    rx, ry = back_marker
-    bx, by = ball_position[:2]
-
-    direction_vec = (fx - rx, fy - ry)
-    mag = math.hypot(*direction_vec) or 1.0
-    ux, uy = direction_vec[0] / mag, direction_vec[1] / mag
-    forward_pos = (fx + ux * forward_distance, fy + uy * forward_distance)
-
-    dist_now = math.hypot(bx - fx, by - fy)
-    dist_next = math.hypot(bx - forward_pos[0], by - forward_pos[1])
-
-    dummy_forward = (*forward_pos, 10, (255, 255, 255))
-
-    if not barrier_blocks_path(front_marker, dummy_forward, [], crosses):
-        if dist_next < dist_now:
-            return True
-
-    return False
-
-def point_rect_distance(px, py, rect):
-    x, y, w, h = rect
-
-    if x <= px <= x + w and y <= py <= y + h:
-        distances = [
-            abs(px - x),           
-            abs(px - (x + w)),     
-            abs(py - y),           
-            abs(py - (y + h))      
-        ]
-        return min(distances)
-
-    dx = max(x - px, 0, px - (x + w))
-    dy = max(y - py, 0, py - (y + h))
-    return math.hypot(dx, dy)
 
 def is_corner_ball(ball, margin=150):
     x, y, _, _ = ball
@@ -245,16 +194,16 @@ def create_staging_point_edge(ball, offset_distance=150):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
-    # Venstre kant
+    # Left edge 
     if abs(x - x_min) < 150:
         return (x + offset_distance, y, r, o)
-    # Højre kant
+    # Right edge
     elif abs(x - x_max) < 150:
         return (x - offset_distance, y, r, o)
-    # Øverste kant
+    # Top edge
     elif abs(y - y_min) < 150:
         return (x, y + offset_distance, r, o)
-    # Nederste kant
+    # Bottom edge
     elif abs(y - y_max) < 150:
         return (x, y - offset_distance, r, o)
 
@@ -265,20 +214,19 @@ def create_staging_point_corner(ball, offset_distance=150):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
     print("corner")
-    # Øverste venstre hjørne
+    # Top left corner
     if x < x_min + 150 and y < y_min + 150:
         return (x + offset_distance, y + offset_distance, r, o)
-    # Øverste højre hjørne
+    # Top right corner
     elif x > x_max - 150 and y < y_min + 150:
         return (x - offset_distance, y + offset_distance, r, o)
-    # Nederste venstre hjørne
+    # Bottom left corner
     elif x < x_min + 150 and y > y_max - 150:
         return (x + offset_distance, y - offset_distance, r, o)
-    # Nederste højre hjørne
+    # Bottom right corner
     elif x > x_max - 150 and y > y_max - 150:
         return (x - offset_distance, y - offset_distance, r, o)
 
-    # Fallback
     return (x, y - offset_distance, r, o)
 
 
@@ -314,7 +262,7 @@ def create_staging_point_egg(ball, eggs, offset_distance=350):
             nearest_egg = (ex, ey)
 
     if nearest_egg is None:
-        return ball  # fallback
+        return ball 
 
     ex, ey = nearest_egg
 
@@ -340,33 +288,25 @@ def _point_to_segment_distance(px, py, x1, y1, x2, y2):
 
 
 def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40):
-    # Robot front marker
     if len(center_marker) == 2:
         cx, cy = center_marker
     else:
         cx, cy = center_marker[:2]
 
-    # Bold position
     bx, by = ball[:2]
 
-    # Step 1) Definer forward_vector som tuple
     forward_vector = (cx - bx, cy - by)
 
-    # Step 2) Fundament til at normalisere forward_vector
     mag = math.hypot(*forward_vector) or 1.0
     ux, uy = forward_vector[0] / mag, forward_vector[1] / mag
 
-    # Step 3) Normal vector
     nx, ny = -uy, ux
 
-    # Step 4) Definer offsets
     offs_x, offs_y = nx * robot_radius, ny * robot_radius
 
-    # Step 5) Linje højre og venstre for robot
     line1 = ((bx + offs_x, by + offs_y), (cx + offs_x, cy + offs_y))
     line2 = ((bx - offs_x, by - offs_y), (cx - offs_x, cy - offs_y))
 
-   # Hjælpefunktioner:
     def dist_to_center(px, py):
         return _point_to_segment_distance(px, py, bx, by, cx, cy)
 
@@ -377,14 +317,12 @@ def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40)
             px, py, line2[0][0], line2[0][1], line2[1][0], line2[1][1])
         return min(d1, d2)
 
-    # Tjek æg
     for ex, ey, er, _ in egg:
         if dist_to_center(ex, ey) <= 20 + er:
             return True
         if dist_to_edges(ex, ey) <= 20 + er:
             return True
 
-    # Tjek kryds
     cross_lines = g.get_cross_lines()
     for (x1, y1, x2, y2) in cross_lines:
         steps = 20
@@ -405,8 +343,6 @@ def close_to_cross(front_marker, back_marker, threshold=100):
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
 
-
-    # Forlæng robotlinjen (front -> en langt punkt i samme retning)
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -415,7 +351,7 @@ def close_to_cross(front_marker, back_marker, threshold=100):
     ux = dx / norm
     uy = dy / norm
 
-    extension = 5000  # mm – langt nok til at krydse en banegrænse
+    extension = 5000 
     extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
     robot_line = ((bx_w, by_w), extended_front)
@@ -430,7 +366,6 @@ def close_to_cross(front_marker, back_marker, threshold=100):
         if intersection:
             ix, iy = intersection
 
-            # Er skæringspunktet foran robotten?
             to_point = (ix - bx_w, iy - by_w)
             forward = (fx_w - bx_w, fy_w - by_w)
             dot = to_point[0]*forward[0] + to_point[1]*forward[1]
@@ -449,8 +384,6 @@ def close_to_barrier(front_marker, back_marker, threshold=55):
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
 
-
-    # Forlæng robotlinjen (front -> en langt punkt i samme retning)
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -459,7 +392,7 @@ def close_to_barrier(front_marker, back_marker, threshold=55):
     ux = dx / norm
     uy = dy / norm
 
-    extension = 5000  # mm – langt nok til at krydse en banegrænse
+    extension = 5000  
     extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
     robot_line = ((bx_w, by_w), extended_front)
@@ -473,7 +406,6 @@ def close_to_barrier(front_marker, back_marker, threshold=55):
         intersection = find_line_intersection_from_lines(robot_line, corrected_line)
         if intersection:
             ix, iy = intersection
-            # Er skæringspunktet foran robotten?
             to_point = (ix - bx_w, iy - by_w)
             forward = (fx_w - bx_w, fy_w - by_w)
             dot = to_point[0]*forward[0] + to_point[1]*forward[1]
@@ -489,8 +421,6 @@ def close_to_egg(front_marker, back_marker, eggs, threshold=120):
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
 
-    print(f"egg: {eggs}")
-    # Retning: back → front
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -513,20 +443,16 @@ def close_to_egg(front_marker, back_marker, eggs, threshold=120):
             if closest_dist is None or direct_dist < closest_dist:
                 closest_dist = direct_dist
 
-    print(f"egg dist: {closest_dist}")
     return closest_dist is not None and closest_dist < threshold
 
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
-    print("slow")
     fx, fy = front_marker
     bx, by = back_marker
 
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
 
-
-    # Forlæng robotlinjen (front -> en langt punkt i samme retning)
     dx = fx_w - bx_w
     dy = fy_w - by_w
     norm = math.hypot(dx, dy)
@@ -535,7 +461,7 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
     ux = dx / norm
     uy = dy / norm
 
-    extension = 5000  # mm – langt nok til at krydse en banegrænse
+    extension = 5000 
     extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
     robot_line = ((bx_w, by_w), extended_front)
@@ -550,7 +476,6 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
         if intersection:
             ix, iy = intersection
 
-            # Er skæringspunktet foran robotten?
             to_point = (ix - bx_w, iy - by_w)
             forward = (fx_w - bx_w, fy_w - by_w)
             dot = to_point[0]*forward[0] + to_point[1]*forward[1]
@@ -560,30 +485,21 @@ def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
                 if closest_dist is None or dist < closest_dist:
                     closest_dist = dist
 
-    print(f"should slow: {closest_dist is not None and closest_dist < threshold}")
-
     return closest_dist is not None and closest_dist < threshold
 
 def draw_lines(robot, ball, eggs, crosses, robot_radius=80, threshold=60):
-    # Robot front marker
     fx, fy = robot
-    # Bold position
     bx, by = ball[:2]
 
-    # Step 1) Definer forward_vector som tuple
     forward_vector = (fx - bx, fy - by)
 
-    # Step 2) Fundament til at normalisere forward_vector
     mag = math.hypot(*forward_vector) or 1.0
     ux, uy = forward_vector[0] / mag, forward_vector[1] / mag
 
-    # Step 3) Normal vector
     nx, ny = -uy, ux
 
-    # Step 4) Definer offsets
     offs_x, offs_y = nx * robot_radius, ny * robot_radius
 
-    # Step 5) Linje højre og venstre for robot
     line1 = ((bx + offs_x, by + offs_y), (fx + offs_x, fy + offs_y))
     line2 = ((bx - offs_x, by - offs_y), (fx - offs_x, fy - offs_y))
 
@@ -666,7 +582,6 @@ def bfs_path(start_zone, goal_zone, eggs, ball_position=None):
 
                     visited.add(neighbor)
                     queue.append((neighbor, path + [neighbor]))
-
     return None
 
 
@@ -747,7 +662,7 @@ def find_line_intersection_from_lines(line1, line2):
 
     denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
     if denom == 0:
-        return None  # Parallelle linjer
+        return None  
 
     px = ((x1 * y2 - y1 * x2) * (x3 - x4) -
           (x1 - x2) * (x3 * y4 - y3 * x4)) / denom

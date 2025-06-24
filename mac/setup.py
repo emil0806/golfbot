@@ -50,10 +50,10 @@ def setup_homography():
     FIELD_X_MIN, FIELD_X_MAX, FIELD_Y_MIN, FIELD_Y_MAX = g.get_field_bounds()
 
     PIX_CORNERS = np.float32([
-        [FIELD_X_MIN, FIELD_Y_MIN],   # top-left
-        [FIELD_X_MAX, FIELD_Y_MIN],   # top-right
-        [FIELD_X_MAX, FIELD_Y_MAX],   # bottom-right
-        [FIELD_X_MIN, FIELD_Y_MAX]    # bottom-left
+        [FIELD_X_MIN, FIELD_Y_MIN],   
+        [FIELD_X_MAX, FIELD_Y_MIN],   
+        [FIELD_X_MAX, FIELD_Y_MAX],   
+        [FIELD_X_MIN, FIELD_Y_MAX]    
     ])
 
     FIELD_W, FIELD_H = 1800, 1200

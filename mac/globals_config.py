@@ -90,9 +90,9 @@ def extract_cross_lines(detected_lines):
     for x1, y1, x2, y2 in detected_lines:
         dx = x2 - x1
         dy = y2 - y1
-        if abs(dx) > abs(dy):  # Horisontale linjer
+        if abs(dx) > abs(dy):
             horizontal_lines.append((x1, y1, x2, y2))
-        else:  # Vertikale linjer
+        else: 
             vertical_lines.append((x1, y1, x2, y2))
 
     horizontal_fit, m_h, c_h = fit_line_to_points(horizontal_lines, vertical=False)
@@ -112,7 +112,7 @@ def extract_cross_lines(detected_lines):
             y_intersect = int((m_h * c_v + c_h) / (1 - m_h * m_v))
             x_intersect = int(m_v * y_intersect + c_v)
         except ZeroDivisionError:
-            x_intersect = y_intersect = 0  # fallback hvis linjerne er næsten parallelle
+            x_intersect = y_intersect = 0  
 
         x_min = min(horizontal_fit[0], horizontal_fit[2], vertical_fit[0], vertical_fit[2])
         x_max = max(horizontal_fit[0], horizontal_fit[2], vertical_fit[0], vertical_fit[2])
@@ -140,7 +140,6 @@ def fit_line_to_points(lines, vertical=False):
         return None, None, None
 
     if vertical:
-        # Fit x = m*y + c
         A = np.vstack([ys, np.ones(len(ys))]).T
         m, c = np.linalg.lstsq(A, xs, rcond=None)[0]
 
@@ -151,7 +150,6 @@ def fit_line_to_points(lines, vertical=False):
 
         return (x_min, y_min, x_max, y_max), m, c
     else:
-        # Fit y = m*x + c
         A = np.vstack([xs, np.ones(len(xs))]).T
         m, c = np.linalg.lstsq(A, ys, rcond=None)[0]
 

@@ -53,7 +53,7 @@ last_robot_info = None
 
 ### BALLS ###
 prev_ball_count = 11
-ball_history = deque(maxlen=5)  # Saves latest five frames
+ball_history = deque(maxlen=5) 
 
 ### CROSS ###
 cross = []
@@ -159,15 +159,14 @@ while True:
                     (int(line2[1][0]), int(line2[1][1])), 
                     (0, 255, 255), 2)
         
-        # --- Draw actual balls in green ---
-        # Tegn alle bolde (grøn)
+        # Draw balls
         if (ball_positions):
             for (x, y, r, o) in ball_positions:
                 cv2.circle(frame, (x, y), int(r), (0, 255, 0), 2)
                 cv2.putText(frame, "Ball", (x - 20, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Tegn staging-punkter (lilla)
+        # Staging points, not used anymore
         if (staged_balls and len(staged_balls) > 0):
             for ball in staged_balls:
                 if ball is not None:
@@ -176,13 +175,14 @@ while True:
                     cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
     
-        # Tegn æg (gul)
+        # Draw egg
         if (egg):
             for (ex, ey, er, _) in egg:
                 cv2.circle(frame, (ex, ey), int(er), (0, 255, 255), 2)
                 cv2.putText(frame, "Egg", (ex - 20, ey - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
+        # Draw cross
         if (cross):
             for (x1, y1, x2, y2) in cross:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
@@ -190,13 +190,14 @@ while True:
                 cv2.putText(frame, "Cross", (cx - 15, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
+        # Draw barriers, not used anymore
         if (barriers):
             for (x1, y1, x2, y2), center in barriers:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                 cx, cy = center
                 cv2.putText(frame, "Barrier", (cx - 20, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
+        # Draw robot
         if robot_info:
             (fx, fy),(cx, cy), (rx, ry), _ = robot_info
             cv2.circle(frame, (rx, ry), 10, (255, 0, 0), 2)
@@ -215,6 +216,7 @@ while True:
 
             cv2.circle(frame, (center_x, center_y), rotation_radius, (255, 255, 255), 2)
 
+        # Draw grid
         x1, x2, x3, x4, x5, x6, y1, y2, y3, y4, y5, y6 = get_grid_thresholds()
         
         for x in [x1, x2, x3, x4, x5, x6]:
@@ -222,6 +224,7 @@ while True:
         for y in [y1, y2, y3, y4, y5, y6]:
             cv2.line(frame, (int(g.FIELD_X_MIN), int(y)), (int(g.FIELD_X_MAX), int(y)), (255, 255, 0), 2)
 
+        # Draw path
         if hasattr(controller, 'simplified_path') and controller.simplified_path:
             path_points = [(cx, cy)] + controller.simplified_path
 
@@ -230,20 +233,21 @@ while True:
                 x2, y2 = path_points[i + 1][:2]
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
 
-        # Tegn FIELD_LINES (blå)
+        # Draw border lines
         for x1, y1, x2, y2 in g.get_field_lines():
             cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
             cv2.putText(frame, "Field", (cx - 20, cy - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
             
-        # Tegn FIELD_LINES (blå)
+        # Draw cross lines
         for x1, y1, x2, y2 in g.get_cross_lines():
             cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
             cv2.putText(frame, "Field", (cx - 20, cy - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
+        # Show timer in top left corner
         cv2.putText(frame, f"Time: {int(elapsed_time)}s", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 200, 255), 2)
 
         cv2.imshow("Ball & Robot Detection", frame)
@@ -258,7 +262,7 @@ while True:
             conn.sendall(command.encode())
         except:
             print("Kunne ikke sende stop-kommando til robot.")
-        time.sleep(1)  # Undgå at spamme CPU og console hvis fejl sker i loop
+        time.sleep(1)
         continue
 
 # movement_command = "quit"

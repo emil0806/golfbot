@@ -79,7 +79,6 @@ class RobotController:
         if new_state != self.state:
             self.state = new_state
 
-            # Reset values
             self.reset_command()
             self.path_to_target = None
             self.reached_path_point = False
@@ -119,8 +118,8 @@ class RobotController:
                 self.next_state_count = 1
 
     def set_delivery_targets(self):
-        tr = g.PIX_FIELD_CORNERS[1]  # Top Right
-        br = g.PIX_FIELD_CORNERS[2]  # Bottom Right
+        tr = g.PIX_FIELD_CORNERS[1]  
+        br = g.PIX_FIELD_CORNERS[2]  
 
         mid_x = (tr[0] + br[0]) // 2
         mid_y = (tr[1] + br[1]) // 2
