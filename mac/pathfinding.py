@@ -116,22 +116,18 @@ def determine_direction(robot_info, ball_position, crosses=None):
         else:
             return "forward"
     elif cross < 0:
-        #if rotation_risk:
-        #    if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
-        #        return "forward"
-        #    return "slow_backward"        
-        if angle_difference > 25:
+        if (close_to_barrier(front_marker, back_marker, threshold=120) or close_to_cross(front_marker, back_marker, threshold=150)) and angle_difference > 10:
+            return "medium_backward"         
+        elif angle_difference > 25:
                         return "fast_right"
         elif angle_difference > 15:
             return "right"
         else:
             return "medium_right"
     else:
-        #if rotation_risk:
-        #    if prefer_forward_if_safe(front_marker, back_marker, ball_position, crosses):
-        #        return "forward"
-        #    return "slow_backward" 
-        if angle_difference > 25:
+        if (close_to_barrier(front_marker, back_marker, threshold=120) or close_to_cross(front_marker, back_marker, threshold=150)) and angle_difference > 10:
+            return "medium_backward"  
+        elif angle_difference > 25:
             return "fast_left"
         elif angle_difference > 15:
             return "left"
@@ -232,21 +228,21 @@ def create_staging_point_edge(ball, offset_distance=200):
     return (x, y, r, o)
 
 
-def create_staging_point_corner(ball, offset_distance=300):
+def create_staging_point_corner(ball, offset_distance=200):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
-
+    print("corner")
     # Øverste venstre hjørne
-    if x < x_min + 100 and y < y_min + 100:
+    if x < x_min + 150 and y < y_min + 150:
         return (x + offset_distance, y + offset_distance, r, o)
     # Øverste højre hjørne
-    elif x > x_max - 100 and y < y_min + 100:
+    elif x > x_max - 150 and y < y_min + 150:
         return (x - offset_distance, y + offset_distance, r, o)
     # Nederste venstre hjørne
-    elif x < x_min + 100 and y > y_max - 100:
+    elif x < x_min + 150 and y > y_max - 150:
         return (x + offset_distance, y - offset_distance, r, o)
     # Nederste højre hjørne
-    elif x > x_max - 100 and y > y_max - 100:
+    elif x > x_max - 150 and y > y_max - 150:
         return (x - offset_distance, y - offset_distance, r, o)
 
     # Fallback

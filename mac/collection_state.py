@@ -34,16 +34,16 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         controller.corner_staging_reached = False
         controller.cross_staging_reached = False
     
-    if is_edge_ball(original_ball):
-        if controller.edge_staging_reached:
-            target_ball = original_ball
-        else:
-            target_ball = create_staging_point_edge(original_ball)
-    elif is_corner_ball(original_ball):
+    if is_corner_ball(original_ball):
         if controller.corner_staging_reached:
             target_ball = original_ball
         else:
             target_ball = create_staging_point_corner(original_ball)
+    elif is_edge_ball(original_ball):
+        if controller.edge_staging_reached:
+            target_ball = original_ball
+        else:
+            target_ball = create_staging_point_edge(original_ball)
     elif is_ball_in_cross(original_ball):
         if controller.cross_staging_reached:
             target_ball = original_ball
