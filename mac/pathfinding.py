@@ -28,7 +28,6 @@ PIXEL_CY = IMAGE_HEIGHT / 2
 
 
 def _correct_projection(pixel_pt, object_height):
-    """Korrigerer et pixel-punkt til verdensplan via simpelt skalering ud fra højde."""
     scale = (CAMERA_HEIGHT - object_height) / CAMERA_HEIGHT
     dx = (pixel_pt[0] - PIXEL_CX) * scale
     dy = (pixel_pt[1] - PIXEL_CY) * scale

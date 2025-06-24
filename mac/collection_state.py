@@ -21,7 +21,11 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         return RobotState.DELIVERY
 
     pre_sorted_balls = sort_balls_by_distance(ball_positions, front_marker)
-    original_ball = pre_sorted_balls[0]
+
+    if controller.path_counter >= len(pre_sorted_balls) and controller.delivery_counter > 20:
+        return RobotState.DELIVERY
+    
+    original_ball = pre_sorted_balls[controller.path_counter]
 
     if((len(ball_positions) != controller.last_ball_count)):
         controller.simplified_path = None
@@ -66,6 +70,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         path = bfs_path(robot_zone, ball_zone, egg, ball_position=target_ball[:2])
 
         if path:
+            controller.path_counter = 0
             simplified = get_simplified_path(path, center_marker, target_ball, egg)
 
             if is_edge_ball(original_ball) and not controller.edge_staging_reached:
@@ -79,6 +84,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         else:
             print("no path")
             controller.simplified_path = None
+            controller.path_counter += 1
             return
 
         
