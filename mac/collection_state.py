@@ -34,6 +34,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         controller.edge_staging_reached = False
         controller.corner_staging_reached = False
         controller.cross_staging_reached = False
+        controller.path_fail_counter = 0
     
     if is_corner_ball(original_ball):
         if controller.corner_staging_reached:
@@ -72,6 +73,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
         if path:
             controller.path_counter = 0
+            controller.path_fail_counter = 0
             simplified = get_simplified_path(path, center_marker, target_ball, egg)
 
             if is_corner_ball(original_ball) and not controller.corner_staging_reached:
@@ -83,9 +85,16 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
             controller.simplified_path = simplified
         else:
-            print("no path")
+            controller.path_fail_counter += 1
+
+            if controller.path_fail_counter >= 3:
+                controller.current_target = target_ball[:2]
+                command = determine_direction(robot_info, target_ball[:2], cross)
+                controller.send_command(command)
+            else:
+                controller.path_counter += 1
+
             controller.simplified_path = None
-            controller.path_counter += 1
             return RobotState.COLLECTION
 
         

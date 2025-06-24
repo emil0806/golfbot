@@ -48,6 +48,7 @@ class RobotController:
         self.reached_path_point = False
         self.simplified_path = None
         self.path_counter = 0
+        self.path_fail_counter = 0
 
         ### TARGETS ###
         self.goal_second_target = None
