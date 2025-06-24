@@ -1,5 +1,6 @@
 from collections import deque
 import math
+from robot_controller import RobotController
 import numpy as np
 import cv2
 import globals_config as g
@@ -104,7 +105,7 @@ def sort_balls_by_distance(ball_positions, front_marker):
 
     return sorted_balls
 
-def determine_direction(robot_info, ball_position, crosses=None):
+def determine_direction(robot_info, ball_position, controller: RobotController, crosses=None):
     if not robot_info or not ball_position:
         return "stop"
 
@@ -124,10 +125,10 @@ def determine_direction(robot_info, ball_position, crosses=None):
     mag_b = math.hypot(*vector_to_ball)
     cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
     angle_difference = math.degrees(math.acos(cos_theta))
+    distance_to_ball = mag_b
 
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
     center = ((fx + rx) / 2, (fy + ry) / 2)
-    rotation_risk = will_rotation_hit_cross(center, radius=130, cross_lines=crosses)
 
     if angle_difference < 4:
         if close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker):
@@ -135,10 +136,15 @@ def determine_direction(robot_info, ball_position, crosses=None):
         elif slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
         else:
-            return "forward"
+            if distance_to_ball > 300:
+                return "fast_forward"
+            else:
+                return "forward"
     elif cross < 0:
         if (close_to_barrier(front_marker, back_marker, threshold=120) or close_to_cross(front_marker, back_marker, threshold=150)) and angle_difference > 10:
-            return "medium_backward"         
+            return "medium_backward"
+        elif (close_to_barrier(front_marker, back_marker, threshold=160) or close_to_cross(front_marker, back_marker, threshold=180)) and angle_difference > 10 and controller.last_command == "medium_backward":
+            return "backward"            
         elif angle_difference > 25:
                         return "fast_right"
         elif angle_difference > 15:
@@ -148,6 +154,8 @@ def determine_direction(robot_info, ball_position, crosses=None):
     else:
         if (close_to_barrier(front_marker, back_marker, threshold=120) or close_to_cross(front_marker, back_marker, threshold=150)) and angle_difference > 10:
             return "medium_backward"  
+        elif (close_to_barrier(front_marker, back_marker, threshold=160) or close_to_cross(front_marker, back_marker, threshold=180)) and angle_difference > 10 and controller.last_command == "medium_backward":
+            return "backward"            
         elif angle_difference > 25:
             return "fast_left"
         elif angle_difference > 15:
@@ -214,6 +222,18 @@ def is_corner_ball(ball, margin=150):
 
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
 
+def is_semi_corner_ball(ball, margin=200):
+    x, y, _, _ = ball
+    x_min, x_max, y_min, y_max = g.get_field_bounds()
+
+    in_top_left = (x < x_min + margin and y < y_min + margin)
+    in_top_right = (x > x_max - margin and y < y_min + margin)
+    in_bottom_left = (x < x_min + margin and y > y_max - margin)
+    in_bottom_right = (x > x_max - margin and y > y_max - margin)
+
+    return in_top_left or in_top_right or in_bottom_left or in_bottom_right
+
+
 def is_edge_ball(ball, margin=70):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
@@ -229,7 +249,7 @@ def is_edge_ball(ball, margin=70):
 
     return near_left or near_right or near_top or near_bottom
 
-def create_staging_point_edge(ball, offset_distance=120):
+def create_staging_point_edge(ball, offset_distance=130):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
@@ -249,10 +269,9 @@ def create_staging_point_edge(ball, offset_distance=120):
     return (x, y, r, o)
 
 
-def create_staging_point_corner(ball, offset_distance=150):
+def create_staging_point_corner(ball, offset_distance=130):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
-    print("corner")
     # Øverste venstre hjørne
     if x < x_min + 150 and y < y_min + 150:
         return (x + offset_distance, y + offset_distance, r, o)
@@ -269,6 +288,35 @@ def create_staging_point_corner(ball, offset_distance=150):
     # Fallback
     return (x, y - offset_distance, r, o)
 
+def create_staging_point_semi_corner(ball):
+    x, y, r, o = ball
+    x_min, x_max, y_min, y_max = g.get_field_bounds()
+      # Venstre kant
+    if abs(x - x_min) < 150:
+        if(y <= (y_max - y_min) // 2):
+            return (x + 130, y + 90, r, o)
+        else:
+            return (x + 130, y - 90, r, o)
+    # Højre kant
+    elif abs(x - x_max) < 150:
+        if(y <= (y_max - y_min) // 2):
+            return (x - 130, y + 90, r, o)
+        else:
+            return (x - 130, y - 90, r, o)
+    # Øverste kant
+    elif abs(y - y_min) < 150:
+        if(x <= (x_max - x_min) // 2):
+            return (x + 90, y + 130, r, o)
+        else:
+            return (x - 90, y + 130, r, o)
+    # Nederste kant
+    elif abs(y - y_max) < 150:
+        if(x <= (x_max - x_min) // 2):
+            return (x - 130, y + 90, r, o)
+        else:
+            return (x - 130, y + 90, r, o)
+
+    return (x, y, r, o)
 
 def create_staging_point_cross(ball, offset_distance=250):
     bx, by, r, o = ball

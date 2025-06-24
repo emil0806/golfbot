@@ -4,7 +4,7 @@ import time
 import cv2
 from robot_controller import RobotController
 from robot_state import RobotState
-from pathfinding import (barrier_blocks_path, bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, sort_balls_by_distance,
+from pathfinding import (barrier_blocks_path, bfs_path, create_staging_point_semi_corner, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, is_semi_corner_ball, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, create_staging_point_cross)
 import numpy as np
 from config import EV3_IP, PORT
@@ -40,6 +40,11 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             target_ball = original_ball
         else:
             target_ball = create_staging_point_corner(original_ball)
+    elif is_semi_corner_ball(original_ball):
+        if controller.semi_corner_staging_reached:
+            target_ball = original_ball
+        else:
+            target_ball = create_staging_point_semi_corner(original_ball)
     elif is_edge_ball(original_ball):
         if controller.edge_staging_reached:
             target_ball = original_ball
@@ -74,9 +79,11 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             controller.path_counter = 0
             simplified = get_simplified_path(path, center_marker, target_ball, egg)
 
-            if is_edge_ball(original_ball) and not controller.edge_staging_reached:
-                simplified.append(original_ball[:2])
             if is_corner_ball(original_ball) and not controller.corner_staging_reached:
+                simplified.append(original_ball[:2])
+            if is_semi_corner_ball(original_ball) and not controller.semi_corner_staging_reached:
+                simplified.append(original_ball[:2])
+            if is_edge_ball(original_ball) and not controller.edge_staging_reached:
                 simplified.append(original_ball[:2])
             if is_ball_in_cross(original_ball) and not controller.cross_staging_reached:
                 simplified.append(original_ball[:2])
@@ -99,7 +106,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             controller.simplified_path.pop(0)
 
         controller.current_target = next_target
-        command = determine_direction(robot_info, next_target, cross)
+        command = determine_direction(robot_info, next_target, controller, cross)
         controller.send_command(command)
     
     return RobotState.COLLECTION

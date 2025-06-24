@@ -1,6 +1,5 @@
 import socket
 import globals_config as g
-from pathfinding import get_zone_center
 from robot_state import RobotState
 import numpy as np
 import time
@@ -42,6 +41,7 @@ class RobotController:
         self.edge_staging_reached = False
         self.corner_staging_reached = False
         self.cross_staging_reached = False
+        self.semi_corner_staging_reached = False
         
         ### PATH ###
         self.path_to_target = None
@@ -87,13 +87,6 @@ class RobotController:
             self.waiting_for_continue = False
             self.at_blocked_staging = False
             self.simplified_path = None
-
-    def reached_next_path_point(self, cx, cy):
-        if not self.path_to_target:
-            return False
-        zx, zy = get_zone_center(self.path_to_target[0])
-        dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        return dist < 20
     
     def update_state(self, proposed_state: RobotState):
         if (self.state == RobotState.DELIVERY and proposed_state == RobotState.COLLECTION) or (proposed_state == RobotState.COMPLETE):

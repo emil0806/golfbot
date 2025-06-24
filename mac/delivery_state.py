@@ -65,7 +65,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
                     return RobotState.DELIVERY
 
             controller.current_target = next_target
-            command = determine_direction(robot_info, next_target, cross)
+            command = determine_direction(robot_info, next_target, controller, cross)
             controller.send_command(command)
             return RobotState.DELIVERY
 
