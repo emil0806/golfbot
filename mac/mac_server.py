@@ -135,6 +135,7 @@ while True:
             controller.set_state(RobotState.DELIVERY)
 
         if controller.state == RobotState.COLLECTION:
+            print(f"collection egg: {egg}")
             new_state = handle_collection(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.DELIVERY:
             new_state = handle_delivery(robot_info, ball_positions, egg, cross, controller)

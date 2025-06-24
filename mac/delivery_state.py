@@ -68,7 +68,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
                     return RobotState.DELIVERY
 
             controller.current_target = next_target
-            command = determine_direction(robot_info, next_target, cross)
+            command = determine_direction(robot_info, next_target, cross, egg)
             controller.send_command(command)
             return RobotState.DELIVERY
 
@@ -167,7 +167,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_front = np.linalg.norm(
             np.array(front_marker) - np.array(controller.goal_second_target))
         print(f"[Stage 5] Distance to front_alignment: {dist_front:.2f}")
-        if dist_front > 20:
+        if dist_front > 23:
             movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:
@@ -207,10 +207,10 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
                 controller.send_command(movement_command)
 
     elif controller.delivery_stage == 7:
-        print("[Stage 6] Sending delivery command")
+        print("[Stage 7] Sending delivery command")
         movement_command = "delivery"
         controller.send_command(movement_command)
-        controller.delivery_stage = 7
+        controller.delivery_stage = 8
         return RobotState.DELIVERY
     
     elif controller.delivery_stage == 8:

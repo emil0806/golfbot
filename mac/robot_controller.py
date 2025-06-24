@@ -42,6 +42,7 @@ class RobotController:
         self.edge_staging_reached = False
         self.corner_staging_reached = False
         self.cross_staging_reached = False
+        self.egg_staging_reached = False
         
         ### PATH ###
         self.path_to_target = None

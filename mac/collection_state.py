@@ -4,7 +4,7 @@ import time
 import cv2
 from robot_controller import RobotController
 from robot_state import RobotState
-from pathfinding import (barrier_blocks_path, bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, sort_balls_by_distance,
+from pathfinding import (barrier_blocks_path, bfs_path, create_staging_point_egg, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, is_ball_near_egg, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, create_staging_point_cross)
 import numpy as np
 from config import EV3_IP, PORT
@@ -15,7 +15,7 @@ import globals_config as g
 def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
     cx, cy = center_marker
-
+    print(f"cc egg: {egg}")
 
     if(len(ball_positions) < 1 and controller.delivery_counter > 20):
         return RobotState.DELIVERY
@@ -51,6 +51,11 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             target_ball = original_ball
         else:
             target_ball = create_staging_point_cross(original_ball)
+    elif is_ball_near_egg(original_ball, egg):
+        if controller.egg_staging_reached:
+            target_ball = original_ball
+        else:
+            target_ball = create_staging_point_egg(original_ball, egg)
     else:
         target_ball = original_ball
 
@@ -82,6 +87,8 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
                 simplified.append(original_ball[:2])
             elif is_ball_in_cross(original_ball) and not controller.cross_staging_reached:
                 simplified.append(original_ball[:2])
+            elif is_ball_near_egg(original_ball, egg) and not controller.egg_staging_reached:
+                simplified.append(original_ball[:2])
 
             controller.simplified_path = simplified
         else:
@@ -89,7 +96,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
             if controller.path_fail_counter >= 3:
                 controller.current_target = target_ball[:2]
-                command = determine_direction(robot_info, target_ball[:2], cross)
+                command = determine_direction(robot_info, target_ball[:2], egg, cross)
                 controller.send_command(command)
             else:
                 controller.path_counter += 1
@@ -108,7 +115,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             controller.simplified_path.pop(0)
 
         controller.current_target = next_target
-        command = determine_direction(robot_info, next_target, cross)
+        command = determine_direction(robot_info, next_target, egg, cross)
         controller.send_command(command)
     
     return RobotState.COLLECTION

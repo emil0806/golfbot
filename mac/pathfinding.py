@@ -104,7 +104,8 @@ def sort_balls_by_distance(ball_positions, front_marker):
 
     return sorted_balls
 
-def determine_direction(robot_info, ball_position, crosses=None):
+def determine_direction(robot_info, ball_position, egg, crosses=None):
+    print(f"path egg: {egg}")
     if not robot_info or not ball_position:
         return "stop"
 
@@ -132,7 +133,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
     rotation_risk = will_rotation_hit_cross(center, radius=130, cross_lines=crosses)
 
     if angle_difference < 4:
-        if close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker):
+        if close_to_barrier(front_marker, back_marker) or close_to_cross(front_marker, back_marker) or close_to_egg(front_marker, back_marker, egg):
             return "slow_backward"
         elif slow_down_close_to_barrier(front_marker, back_marker):
             return "slow_forward"
@@ -231,6 +232,15 @@ def is_edge_ball(ball, margin=70):
 
     return near_left or near_right or near_top or near_bottom
 
+def is_ball_near_egg(ball, eggs, threshold=150):
+    bx, by, *_ = ball
+    for ex, ey, er, _ in eggs:
+        dist = math.hypot(bx - ex, by - ey)
+        if dist < threshold + er:
+            return True
+    return False
+
+
 def create_staging_point_edge(ball, offset_distance=150):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
@@ -272,7 +282,7 @@ def create_staging_point_corner(ball, offset_distance=150):
     return (x, y - offset_distance, r, o)
 
 
-def create_staging_point_cross(ball, offset_distance=250):
+def create_staging_point_cross(ball, offset_distance=300):
     bx, by, r, o = ball
     Xmin, Xmax, Ymin, Ymax = g.get_cross_bounds ()
 
@@ -291,6 +301,33 @@ def create_staging_point_cross(ball, offset_distance=250):
     sy = cy + sign_y * diagonal_distance
 
     return (int(sx), int(sy), r, o)
+
+def create_staging_point_egg(ball, eggs, offset_distance=350):
+    bx, by, r, o = ball
+
+    nearest_egg = None
+    nearest_dist = None
+    for ex, ey, _, _ in eggs:
+        dist = math.hypot(bx - ex, by - ey)
+        if nearest_dist is None or dist < nearest_dist:
+            nearest_dist = dist
+            nearest_egg = (ex, ey)
+
+    if nearest_egg is None:
+        return ball  # fallback
+
+    ex, ey = nearest_egg
+
+    dx = bx - ex
+    dy = by - ey
+    mag = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / mag, dy / mag
+
+    sx = bx + ux * offset_distance
+    sy = by + uy * offset_distance
+
+    return (int(sx), int(sy), r, o)
+
 
 
 def _point_to_segment_distance(px, py, x1, y1, x2, y2):
@@ -342,9 +379,9 @@ def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40)
 
     # Tjek æg
     for ex, ey, er, _ in egg:
-        if dist_to_center(ex, ey) <= threshold + er:
+        if dist_to_center(ex, ey) <= 20 + er:
             return True
-        if dist_to_edges(ex, ey) <= threshold + er:
+        if dist_to_edges(ex, ey) <= 20 + er:
             return True
 
     # Tjek kryds
@@ -446,8 +483,39 @@ def close_to_barrier(front_marker, back_marker, threshold=55):
                 if closest_dist is None or dist < closest_dist:
                     closest_dist = dist
 
-    print(f"check: {closest_dist is not None and closest_dist < threshold}")
     return closest_dist is not None and closest_dist < threshold
+
+def close_to_egg(front_marker, back_marker, eggs, threshold=120):
+    fx_w, fy_w = _correct_marker(front_marker)
+    bx_w, by_w = _correct_marker(back_marker)
+
+    print(f"egg: {eggs}")
+    # Retning: back → front
+    dx = fx_w - bx_w
+    dy = fy_w - by_w
+    norm = math.hypot(dx, dy)
+    if norm == 0:
+        return False
+    ux = dx / norm
+    uy = dy / norm
+
+    extension = 5000
+    extended_front = (bx_w + ux * extension, by_w + uy * extension)
+
+    robot_line = ((bx_w, by_w), extended_front)
+    closest_dist = None
+
+    for ex, ey, er, _ in eggs:
+        ex_w, ey_w = _correct_barrier((ex, ey)) 
+        dist = _point_to_segment_distance(ex_w, ey_w, bx_w, by_w, extended_front[0], extended_front[1])
+        if dist <= threshold + er:
+            direct_dist = math.hypot(ex_w - fx_w, ey_w - fy_w)
+            if closest_dist is None or direct_dist < closest_dist:
+                closest_dist = direct_dist
+
+    print(f"egg dist: {closest_dist}")
+    return closest_dist is not None and closest_dist < threshold
+
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
     print("slow")
