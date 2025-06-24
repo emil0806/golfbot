@@ -125,6 +125,6 @@ class RobotController:
 
         self.goal_second_target = (mid_x, mid_y)
 
-        self.goal_first_target = (mid_x - 250, mid_y)
+        self.goal_first_target = (mid_x - 300, mid_y)
 
 

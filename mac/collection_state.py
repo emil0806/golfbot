@@ -60,7 +60,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     if controller.simplified_path and len(controller.simplified_path) > 1:
         zx, zy = controller.simplified_path[0][:2]
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        if dist < 80:
+        if dist < 90:
             controller.simplified_path.pop(0)
             recalculate = True
 
@@ -95,7 +95,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
         zx, zy = next_target[:2]
 
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        if dist < 50 and len(controller.simplified_path) > 1:
+        if dist < 70 and len(controller.simplified_path) > 1:
             controller.simplified_path.pop(0)
 
         controller.current_target = next_target

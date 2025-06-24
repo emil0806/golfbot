@@ -229,7 +229,7 @@ def is_edge_ball(ball, margin=70):
 
     return near_left or near_right or near_top or near_bottom
 
-def create_staging_point_edge(ball, offset_distance=120):
+def create_staging_point_edge(ball, offset_distance=150):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
