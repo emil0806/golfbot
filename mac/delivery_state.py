@@ -29,7 +29,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         if controller.simplified_path and len(controller.simplified_path) > 1:
             zx, zy = controller.simplified_path[0][:2]
             dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-            if dist < 40:
+            if dist < 30:
                 controller.simplified_path.pop(0)
                 recalculate = True
 
@@ -164,7 +164,7 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_front = np.linalg.norm(
             np.array(front_marker) - np.array(controller.goal_second_target))
         print(f"[Stage 3] Distance to front_alignment: {dist_front:.2f}")
-        if dist_front > 30:
+        if dist_front > 23:
             movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:

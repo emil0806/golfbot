@@ -73,6 +73,7 @@ egg = None
 ### OTHER ###
 timer = 0
 last_command = None
+last_cross_time = time.time()
 
 # ------ SETUP ------
 try:
