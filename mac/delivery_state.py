@@ -8,14 +8,7 @@ import time
         
 def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
-
-    if controller.last_delivery_count == 0:
-        print("[Delivery] Ingen flere bolde tilbage - stopper.")
-        controller.delivery_stage = 0
-        controller.delivery_active = False
-        controller.waiting_for_continue = False
-        return RobotState.COMPLETE
-
+        
     if controller.delivery_stage == 0:
         controller.delivery_active = True
         controller.delivery_stage = 1
@@ -182,6 +175,17 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         print("[Stage 4] Sending delivery command")
         movement_command = "delivery"
         controller.send_command(movement_command)
+        controller.delivery_stage = 7
         return RobotState.DELIVERY
-         
+    
+    elif controller.delivery_stage == 7:
+        time_in_delivery = time.time() - controller.last_delivery_time
+        if time_in_delivery > 10:
+            controller.delivery_stage = 0
+            controller.delivery_active = False
+            controller.waiting_for_continue = False
+            return RobotState.COLLECTION
+        else:
+            return RobotState.DELIVERY
+            
     return RobotState.DELIVERY

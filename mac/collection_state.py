@@ -25,6 +25,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     if controller.path_counter >= len(pre_sorted_balls) and controller.delivery_counter > 20:
         return RobotState.DELIVERY
     
+    
     original_ball = pre_sorted_balls[controller.path_counter]
 
     if((len(ball_positions) != controller.last_ball_count)):
@@ -85,7 +86,7 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             print("no path")
             controller.simplified_path = None
             controller.path_counter += 1
-            return
+            return RobotState.COLLECTION
 
         
     if controller.simplified_path:

@@ -10,6 +10,9 @@ class RobotController:
         ### COMMUNICATION ###
         self.conn = conn
 
+        ### COMPLETE ###
+        self.complete_counter = 0
+
         ### STATES ###
         self.state = RobotState.COLLECTION
         self.next_state_candidate = None
@@ -93,7 +96,7 @@ class RobotController:
         return dist < 20
     
     def update_state(self, proposed_state: RobotState):
-        if self.state == RobotState.DELIVERY and proposed_state == RobotState.COLLECTION:
+        if (self.state == RobotState.DELIVERY and proposed_state == RobotState.COLLECTION) or (proposed_state == RobotState.COMPLETE):
             self.set_state(proposed_state)
             self.next_state_candidate = None
             self.next_state_count = 0

@@ -9,10 +9,10 @@ FIELD_Y_MIN = None
 FIELD_Y_MAX = None
 
 PIX_FIELD_CORNERS = [
-    (304, 50),      # TL
-    (1628, 65),     # TR
-    (1607, 1039),   # BR
-    (267, 1031)     # BL
+    (260, 60),      # TL
+    (1584, 59),     # TR
+    (1605, 1027),   # BR
+    (265, 1035)     # BL
 ]
 
 FIELD_LINES = []

@@ -3,6 +3,7 @@ import math
 import cv2
 import numpy as np
 import time
+from robot_controller import RobotController
 
 import globals_config as g
 
@@ -12,12 +13,15 @@ ball_history        = deque(maxlen=5)
 COLLECT_DIST_PIX      = 40           # hvor tæt bag-markøren skal være før bold "forsvinder"
 
 
-def stabilize_detections(current_balls, robot_px, distance_threshold=10):
+def stabilize_detections(current_balls, robot_px, controller: RobotController, distance_threshold=10):
     global stable_balls, ball_history
 
     MIN_FRAMES_FOR_STABLE = 5
     MAX_FRAMES_MISSING_AFTER_ROBOT = 20
     MAX_FRAMES_MISSING_TOTAL = 20
+
+    if(controller.delivery_counter < 1):
+        MIN_FRAMES_FOR_STABLE = 1
 
     # --------- Opdater historik ---------
     ball_history = deque(list(ball_history), maxlen=MIN_FRAMES_FOR_STABLE)

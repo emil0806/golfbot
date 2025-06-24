@@ -36,6 +36,9 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 ### CONTROLLER ###
 controller = RobotController(conn)
 
+start_time = time.time()
+elapsed_time = 0
+
 ### STAGING ###
 has_staging = False
 at_staging = False
@@ -112,13 +115,25 @@ while True:
         
         current_balls = detect_balls(frame, egg, back_marker, front_marker)
                 
-        stable_balls = stabilize_detections(current_balls, back_marker)
+        stable_balls = stabilize_detections(current_balls, back_marker, controller)
 
         ball_positions = stable_balls
         controller.delivery_counter += 1
 
+        if(len(ball_positions)) == 0:
+            controller.complete_counter += 1
+            if controller.complete_counter > 5:
+                controller.update_state(new_state)
+        else:
+             controller.complete_counter = 0
+
+        if controller.state != RobotState.COMPLETE:
+            elapsed_time = time.time() - start_time
+
+        if elapsed_time > 150 and controller.state != RobotState.DELIVERY:
+            controller.set_state(RobotState.DELIVERY)
+
         if controller.state == RobotState.COLLECTION:
-            print("test")
             new_state = handle_collection(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.DELIVERY:
             new_state = handle_delivery(robot_info, ball_positions, egg, cross, controller)
@@ -227,6 +242,7 @@ while True:
             cv2.putText(frame, "Field", (cx - 20, cy - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
+        cv2.putText(frame, f"Time: {int(elapsed_time)}s", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 200, 255), 2)
 
         cv2.imshow("Ball & Robot Detection", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):

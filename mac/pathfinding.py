@@ -66,22 +66,43 @@ def pix2world(pt):
 previous_best_ball = None
 
 def sort_balls_by_distance(ball_positions, front_marker):
+    cx, cy = g.get_cross_center()
+
     if not ball_positions or not front_marker:
         return []
 
     fx, fy = front_marker
 
-    sorted_balls = sorted(
-        ball_positions,
-        key=lambda ball: (
-            1 if ball[3] == 1 else 0,
-            math.hypot(ball[0] - fx, ball[1] - fy)
-        )
-    )
+    orange_balls = [b for b in ball_positions if b[3] == 1]
+    regular_balls = [b for b in ball_positions if b[3] != 1]
+
+    def distance_to_front(b):
+        return math.hypot(b[0] - fx, b[1] - fy)
+
+    q1 = [] 
+    q2 = [] 
+    q3 = [] 
+    q4 = [] 
+
+    for b in regular_balls:
+        x, y = b[:2]
+        if x < cx and y > cy:
+            q1.append(b)
+        elif x < cx and y < cy:
+            q2.append(b)
+        elif x > cx and y < cy:
+            q3.append(b)
+        elif x > cx and y > cy:
+            q4.append(b)
+
+    q1.sort(key=distance_to_front)
+    q2.sort(key=distance_to_front)
+    q3.sort(key=distance_to_front)
+    q4.sort(key=distance_to_front)
+
+    sorted_balls = q1 + q2 + q3 + q4 + sorted(orange_balls, key=distance_to_front)
 
     return sorted_balls
-
-
 
 def determine_direction(robot_info, ball_position, crosses=None):
     if not robot_info or not ball_position:
@@ -193,7 +214,7 @@ def is_corner_ball(ball, margin=150):
 
     return in_top_left or in_top_right or in_bottom_left or in_bottom_right
 
-def is_edge_ball(ball, margin=100):
+def is_edge_ball(ball, margin=70):
     x, y, _, _ = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
@@ -208,7 +229,7 @@ def is_edge_ball(ball, margin=100):
 
     return near_left or near_right or near_top or near_bottom
 
-def create_staging_point_edge(ball, offset_distance=200):
+def create_staging_point_edge(ball, offset_distance=150):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
@@ -638,7 +659,7 @@ def get_grid_thresholds():
 
 def is_ball_in_cross(best_ball):
     bx, by = best_ball[:2]
-    if (bx >= g.CROSS_X_MIN and bx <= g.CROSS_X_MAX and by >= g.CROSS_Y_MIN and by <= g.CROSS_Y_MAX):
+    if (bx >= g.CROSS_X_MIN - 50 and bx <= g.CROSS_X_MAX + 50 and by >= g.CROSS_Y_MIN - 50 and by <= g.CROSS_Y_MAX + 50):
         return True
     else:
         return False
