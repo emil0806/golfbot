@@ -124,6 +124,8 @@ def determine_direction(robot_info, ball_position, crosses=None):
     mag_b = math.hypot(*vector_to_ball)
     cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
     angle_difference = math.degrees(math.acos(cos_theta))
+    distance_to_ball = mag_b
+
 
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
     center = ((fx + rx) / 2, (fy + ry) / 2)
@@ -140,7 +142,7 @@ def determine_direction(robot_info, ball_position, crosses=None):
         if (close_to_barrier(front_marker, back_marker, threshold=120) or close_to_cross(front_marker, back_marker, threshold=150)) and angle_difference > 10:
             return "medium_backward"         
         elif angle_difference > 25:
-                        return "fast_right"
+            return "fast_right"
         elif angle_difference > 15:
             return "right"
         else:

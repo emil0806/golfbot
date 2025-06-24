@@ -58,9 +58,9 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     recalculate = controller.simplified_path is None
 
     if controller.simplified_path and len(controller.simplified_path) > 1:
-        zx, zy = controller.simplified_path[0][:2]
+        zx, zy = controller.simplified_path[controller.path_counter][:2]
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        if dist < 90:
+        if dist < 80:
             controller.simplified_path.pop(0)
             recalculate = True
 
@@ -74,11 +74,11 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
             controller.path_counter = 0
             simplified = get_simplified_path(path, center_marker, target_ball, egg)
 
-            if is_edge_ball(original_ball) and not controller.edge_staging_reached:
-                simplified.append(original_ball[:2])
             if is_corner_ball(original_ball) and not controller.corner_staging_reached:
                 simplified.append(original_ball[:2])
-            if is_ball_in_cross(original_ball) and not controller.cross_staging_reached:
+            elif is_edge_ball(original_ball) and not controller.edge_staging_reached:
+                simplified.append(original_ball[:2])
+            elif is_ball_in_cross(original_ball) and not controller.cross_staging_reached:
                 simplified.append(original_ball[:2])
 
             controller.simplified_path = simplified
@@ -90,12 +90,12 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
 
         
     if controller.simplified_path:
-        next_target = controller.simplified_path[0]
+        next_target = controller.simplified_path[controller.path_counter]
 
         zx, zy = next_target[:2]
 
         dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-        if dist < 70 and len(controller.simplified_path) > 1:
+        if dist < 60 and len(controller.simplified_path) > 1:
             controller.simplified_path.pop(0)
 
         controller.current_target = next_target

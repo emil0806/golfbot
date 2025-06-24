@@ -17,8 +17,8 @@ def stabilize_detections(current_balls, robot_px, controller: RobotController, d
     global stable_balls, ball_history
 
     MIN_FRAMES_FOR_STABLE = 5
-    MAX_FRAMES_MISSING_AFTER_ROBOT = 20
-    MAX_FRAMES_MISSING_TOTAL = 20
+    MAX_FRAMES_MISSING_AFTER_ROBOT = 12
+    MAX_FRAMES_MISSING_TOTAL = 12
 
     if(controller.delivery_counter < 1):
         MIN_FRAMES_FOR_STABLE = 1
