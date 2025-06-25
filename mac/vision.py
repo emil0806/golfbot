@@ -13,6 +13,51 @@ ball_history        = deque(maxlen=5)
 COLLECT_DIST_PIX      = 40           # hvor tæt bag-markøren skal være før bold "forsvinder"
 
 
+# ----------  EGG STABILISERING  ----------
+egg_history = deque(maxlen=5)
+stable_eggs = []  # [(x, y, r, color, missing_frames)]
+
+def stabilize_egg(current_egg, distance_threshold=20, min_frames=5, max_missing=12):
+    global egg_history, stable_eggs
+
+    egg_history.append(current_egg)
+
+    # --------- Saml æg-kandidater over tid ---------
+    candidates = {}
+    for frame in egg_history:
+        for (x, y, r, col) in frame:
+            key = (round(x / distance_threshold),
+                   round(y / distance_threshold))
+            candidates.setdefault(key, []).append((x, y, r, col))
+
+    # --------- Tilføj nye stabile æg ---------
+    for _, detections in candidates.items():
+        if len(detections) >= min_frames:
+            xs, ys, rs = zip(*[(d[0], d[1], d[2]) for d in detections])
+            avg_x, avg_y, avg_r = int(np.mean(xs)), int(np.mean(ys)), int(np.mean(rs))
+            new_egg = (avg_x, avg_y, avg_r, 0, 0)  # sidste = missing counter
+
+            # Undgå dubletter
+            if not any(np.hypot(se[0] - avg_x, se[1] - avg_y) < distance_threshold for se in stable_eggs):
+                stable_eggs.append(new_egg)
+
+    # --------- Opdater eksisterende stabile æg ---------
+    updated_eggs = []
+    for (sx, sy, sr, scol, miss) in stable_eggs:
+        # Er dette æg stadig synligt i nuværende frame?
+        visible = any(np.hypot(sx - cx, sy - cy) < distance_threshold for (cx, cy, _, _) in current_egg)
+
+        if visible:
+            updated_eggs.append((sx, sy, sr, scol, 0))  # nulstil miss counter
+        else:
+            if miss + 1 < max_missing:
+                updated_eggs.append((sx, sy, sr, scol, miss + 1))  # inkrementér
+            # ellers fjernes ægget automatisk
+
+    stable_eggs = updated_eggs
+
+    return [(x, y, r, col) for (x, y, r, col, _) in stable_eggs]
+
 def stabilize_detections(current_balls, robot_px, controller: RobotController, distance_threshold=10):
     global stable_balls, ball_history
 
