@@ -8,7 +8,7 @@ from robot_controller import RobotController
 from robot_state import RobotState
 from pathfinding import draw_lines, get_grid_thresholds, set_homography
 import numpy as np
-from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
+from vision import detect_balls, detect_robot, detect_egg, stabilize_detections, stabilize_egg
 from setup import setup_cross_lines, setup_homography, setup_field_lines
 from config import EV3_IP, PORT
 import time
@@ -115,6 +115,7 @@ while True:
         rx, ry = back_marker
 
         egg = detect_egg(frame, back_marker, front_marker)
+        egg = stabilize_egg(egg)
         
         current_balls = detect_balls(frame, egg, back_marker, front_marker)
                 
