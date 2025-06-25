@@ -10,7 +10,7 @@ from pathfinding import draw_lines, get_grid_thresholds, set_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections, stabilize_egg
 from setup import setup_cross_lines, setup_homography, setup_field_lines
-from config import EV3_IP, PORT
+from config import PORT
 import time
 import traceback
 
@@ -266,8 +266,6 @@ while True:
         time.sleep(1)
         continue
 
-# movement_command = "quit"
-# conn.sendall(movement_command.encode())
 cap.release()
 cv2.destroyAllWindows()
 conn.close()

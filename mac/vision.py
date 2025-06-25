@@ -2,20 +2,19 @@ from collections import deque
 import math
 import cv2
 import numpy as np
-import time
 from robot_controller import RobotController
 
 import globals_config as g
 
 # ----------  BALL STABILISERING  ----------
-stable_balls        = []             # [(x,y,r,color,missing_frames)]
+stable_balls        = []
 ball_history        = deque(maxlen=5)
 COLLECT_DIST_PIX      = 40           # hvor tæt bag-markøren skal være før bold "forsvinder"
 
 
 # ----------  EGG STABILISERING  ----------
 egg_history = deque(maxlen=5)
-stable_eggs = []  # [(x, y, r, color, missing_frames)]
+stable_eggs = []
 
 def stabilize_egg(current_egg, distance_threshold=20, min_frames=5, max_missing=12):
     global egg_history, stable_eggs
@@ -35,7 +34,7 @@ def stabilize_egg(current_egg, distance_threshold=20, min_frames=5, max_missing=
         if len(detections) >= min_frames:
             xs, ys, rs = zip(*[(d[0], d[1], d[2]) for d in detections])
             avg_x, avg_y, avg_r = int(np.mean(xs)), int(np.mean(ys)), int(np.mean(rs))
-            new_egg = (avg_x, avg_y, avg_r, 0, 0)  # sidste = missing counter
+            new_egg = (avg_x, avg_y, avg_r, 0, 0)
 
             # Undgå dubletter
             if not any(np.hypot(se[0] - avg_x, se[1] - avg_y) < distance_threshold for se in stable_eggs):
@@ -51,8 +50,7 @@ def stabilize_egg(current_egg, distance_threshold=20, min_frames=5, max_missing=
             updated_eggs.append((sx, sy, sr, scol, 0))  # nulstil miss counter
         else:
             if miss + 1 < max_missing:
-                updated_eggs.append((sx, sy, sr, scol, miss + 1))  # inkrementér
-            # ellers fjernes ægget automatisk
+                updated_eggs.append((sx, sy, sr, scol, miss + 1))
 
     stable_eggs = updated_eggs
 
@@ -84,7 +82,7 @@ def stabilize_detections(current_balls, robot_px, controller: RobotController, d
         if len(detections) >= MIN_FRAMES_FOR_STABLE:
             xs, ys, rs = zip(*[(d[0], d[1], d[2]) for d in detections])
             new_ball = (int(np.mean(xs)), int(np.mean(ys)),
-                        int(np.mean(rs)), detections[0][3], 0, 0)  # miss=0, total_miss=0
+                        int(np.mean(rs)), detections[0][3], 0, 0)
             if not any(np.hypot(sb[0] - new_ball[0], sb[1] - new_ball[1]) < distance_threshold
                        and sb[3] == new_ball[3] for sb in stable_balls):
                 stable_balls.append(new_ball)
@@ -96,17 +94,15 @@ def stabilize_detections(current_balls, robot_px, controller: RobotController, d
                       for cb in current_balls)
 
         if visible:
-            updated.append((sx, sy, sr, scol, 0, 0))  # nulstil tællere
+            updated.append((sx, sy, sr, scol, 0, 0))
             continue
 
-        # Hvis uset: tæl miss og total_miss
         new_miss = miss
         new_total_miss = total_miss + 1
 
         if robot_px and math.hypot(sx - robot_px[0], sy - robot_px[1]) < COLLECT_DIST_PIX:
             new_miss += 1
 
-        # Fjern bolden hvis én af de to betingelser opfyldes
         if new_miss < MAX_FRAMES_MISSING_AFTER_ROBOT and new_total_miss < MAX_FRAMES_MISSING_TOTAL:
             updated.append((sx, sy, sr, scol, new_miss, new_total_miss))
 
@@ -114,15 +110,12 @@ def stabilize_detections(current_balls, robot_px, controller: RobotController, d
     return [(x, y, r, col) for x, y, r, col, _, _ in stable_balls]
 
 def detect_balls(frame, egg, back_marker, front_marker):
-    # Konverter til LAB og split kanaler
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
 
-    # CLAHE på L-kanalen
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     l_clahe = clahe.apply(l)
 
-    # Genopbyg og konverter til BGR → HSV
     lab_clahe = cv2.merge((l_clahe, a, b))
     frame_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
     frame_normalized = np.zeros_like(frame_clahe)
@@ -136,15 +129,12 @@ def detect_balls(frame, egg, back_marker, front_marker):
     lower_orange = np.array([10, 0, 0])
     upper_orange = np.array([35, 255, 255])
 
-    # Masker
     mask_white = cv2.inRange(hsv, lower_white, upper_white)
     mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
 
-    # Ekstra L-kanal tærskel for meget lyse områder
     _, l_thresh = cv2.threshold(l_clahe, 220, 255, cv2.THRESH_BINARY)
     mask_white = cv2.bitwise_and(mask_white, l_thresh)
 
-    # Morfologisk rensning
     kernel = np.ones((3, 3), np.uint8)
     mask_white = cv2.morphologyEx(mask_white, cv2.MORPH_OPEN, kernel)
     mask_white = cv2.morphologyEx(mask_white, cv2.MORPH_CLOSE, kernel)
@@ -183,13 +173,11 @@ def detect_balls(frame, egg, back_marker, front_marker):
                 area > 150
             ):
 
-                # Tjek at bold ikke er inde i et æg
                 is_inside_egg = False
                 if egg:
                     is_inside_egg = any(np.linalg.norm(np.array((x, y)) - np.array((ex, ey))) < er for (ex, ey, er, _) in egg)
                 is_inside_robot = False
                 if back_marker and front_marker:
-                    # Brug midtpunkt mellem bagende og front
                     dist_to_back = np.linalg.norm(np.array((x, y)) - np.array(back_marker))
                     dist_to_front = np.linalg.norm(np.array((x, y)) - np.array(front_marker))
                     is_inside_robot = dist_to_back < 80 or dist_to_front < 80
@@ -197,7 +185,6 @@ def detect_balls(frame, egg, back_marker, front_marker):
 
                 if not is_inside_egg and not is_inside_robot:
                     ball_positions.append((x, y, radius, color_id))
-    # Konturfiltrering
     filter_contours(contours_orange, 1)
     filter_contours(contours_white, 0)
 
@@ -209,7 +196,6 @@ def detect_balls(frame, egg, back_marker, front_marker):
 
     if circles is not None:
         for (x, y, r) in np.round(circles[0, :]).astype("int"):
-            # Skip hvis bolden allerede er fundet via kontur
             if any(abs(x - bx) < 10 and abs(y - by) < 10 for bx, by, _, _ in ball_positions):
                 continue
 
@@ -225,10 +211,8 @@ def detect_balls(frame, egg, back_marker, front_marker):
             avg_hsv = cv2.mean(roi)[:3]
             h, s, v = avg_hsv
 
-            # Tjek for hvid bold
             is_white = (s < 100 and v > 170)
 
-            # Tjek for orange bold
             is_orange = (12 <= h <= 32 and s >= 85 and v >= 180)
             is_inside_egg = False
             if egg:
@@ -263,7 +247,7 @@ def detect_robot(frame, target_id=42, scale=1.8):
 
     for i, marker_id in enumerate(ids.flatten()):
         if marker_id == target_id:
-            c = corners[i][0]  # 4 hjørner i rækkefølge
+            c = corners[i][0]
 
             # Midtpunkt
             center_pt = np.mean(c, axis=0).astype(int)
@@ -273,10 +257,9 @@ def detect_robot(frame, target_id=42, scale=1.8):
             back_pt = ((c[2] + c[3]) / 2).astype(float)
             direction = front_base - back_pt
 
-            # Ekstrapoler front fremad
             front_pt = (back_pt + scale * direction).astype(int)
 
-            # Tegn på billedet
+
             cv2.circle(frame, center_pt, 5, (255, 0, 0), -1)
             cv2.arrowedLine(frame, tuple(back_pt.astype(int)), tuple(front_pt), (0, 255, 0), 2)
 
@@ -417,7 +400,7 @@ def detect_cross(frame, back_marker=None, front_marker=None, ball_positions=None
     cv2.imshow("Cross Mask", mask)
     cv2.imshow("Cross Edges", edges)
 
-    return cross_lines  # Liste af linjer
+    return cross_lines
 
 
 def detect_egg(frame, back_marker, front_marker):

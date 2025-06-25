@@ -1,14 +1,10 @@
 from collections import deque
-import socket
-import time
-import cv2
 from robot_controller import RobotController
 from robot_state import RobotState
-from pathfinding import (barrier_blocks_path, bfs_path, create_staging_point_egg, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, is_ball_near_egg, sort_balls_by_distance,
+from pathfinding import ( bfs_path, create_staging_point_egg, determine_direction, get_simplified_path, get_zone_for_position, is_ball_in_cross, is_ball_near_egg, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, create_staging_point_cross)
 import numpy as np
 from config import EV3_IP, PORT
-import time
 
 import globals_config as g
 

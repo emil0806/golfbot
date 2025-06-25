@@ -1,21 +1,11 @@
-from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D, SpeedPercent, LargeMotor, MediumMotor
+from ev3dev2.motor import MoveTank, OUTPUT_A, OUTPUT_B, OUTPUT_D, SpeedPercent, LargeMotor
 
 
 tank_drive = MoveTank(OUTPUT_A, OUTPUT_B)
 collector = LargeMotor(OUTPUT_D)
-#delivery = MediumMotor(OUTPUT_C)
-
-
-def close_ass():
-    #delivery.on_for_seconds(SpeedPercent(4), 2)
-    return
 
 def move_robot(direction):
-    fast_speed = 70
     normal_speed = 40  # default hastighed
-    medium_speed = 20
-    slow_forward = 10
-    very_slow_forward = 5
     turn_speed = 7
     collector_speed = 65
     delivery_speed = -100
@@ -45,11 +35,9 @@ def move_robot(direction):
         print("Delivering")
         collector.on(SpeedPercent(delivery_speed))
         tank_drive.on(SpeedPercent(0), SpeedPercent(0))
-        #delivery.on_for_seconds(SpeedPercent(-5), 2)
     
     elif direction == "continue":
         print("Continuing")
-        #delivery.on_for_seconds(SpeedPercent(5), 2)
 
     elif direction == "very_slow_left":
         print("Turning very slowly left")
@@ -135,10 +123,6 @@ def move_robot(direction):
         print("Stopping")
         tank_drive.off()
         collector.off()
-
-    #elif direction ==  "quit":
-    #    tank_drive.off() 
-    #    collector.off()
 
     else:
         tank_drive.off() 

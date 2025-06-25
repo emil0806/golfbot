@@ -39,12 +39,12 @@ def visualize_pathfinding(back_marker, ball_positions):
 
     ax.annotate("", xy=(fx, fy), xytext=(rx, ry),
                 arrowprops=dict(arrowstyle="->", lw=2, color="blue"))
-    ax.plot([], [], color='blue', label='Facing Vector')  # dummy for legend
+    ax.plot([], [], color='blue', label='Facing Vector')
 
     # Plot vector to best ball
     ax.annotate("", xy=best_ball, xytext=(rx, ry),
                 arrowprops=dict(arrowstyle="->", lw=2, color="red"))
-    ax.plot([], [], color='red', label='To Best Ball')  # dummy for legend
+    ax.plot([], [], color='red', label='To Best Ball')
 
 
     # Angle between vectors

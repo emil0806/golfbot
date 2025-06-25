@@ -1,9 +1,8 @@
 import math
-import globals_config as g
 from robot_controller import RobotController
 import numpy as np
 from robot_state import RobotState
-from pathfinding import (_correct_marker, bfs_path, determine_direction, get_cross_zones, get_simplified_path, get_zone_center, get_zone_for_position, pix2world)
+from pathfinding import (_correct_marker, bfs_path, determine_direction, get_simplified_path, get_zone_for_position)
 import time
         
 def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotController):
