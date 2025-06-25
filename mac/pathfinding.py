@@ -189,7 +189,7 @@ def is_ball_near_egg(ball, eggs, threshold=100):
     return False
 
 
-def create_staging_point_edge(ball, offset_distance=150):
+def create_staging_point_edge(ball, offset_distance=180):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
 
@@ -209,7 +209,7 @@ def create_staging_point_edge(ball, offset_distance=150):
     return (x, y, r, o)
 
 
-def create_staging_point_corner(ball, offset_distance=150):
+def create_staging_point_corner(ball, offset_distance=200):
     x, y, r, o = ball
     x_min, x_max, y_min, y_max = g.get_field_bounds()
     print("corner")
@@ -231,21 +231,23 @@ def create_staging_point_corner(ball, offset_distance=150):
 
 def create_staging_point_cross(ball, offset_distance=300):
     bx, by, r, o = ball
-    Xmin, Xmax, Ymin, Ymax = g.get_cross_bounds ()
+    Xmin, Xmax, Ymin, Ymax = g.get_cross_bounds()
 
-    cx = (Xmin + Xmax) // 2
-    cy = (Ymin + Ymax) // 2
+    # Midtpunktet af krydset
+    cx = (Xmin + Xmax) / 2
+    cy = (Ymin + Ymax) / 2
 
-    dx = bx - cx 
-    dy = by - cy 
+    # Vektor fra kryds til bold
+    dx = bx - cx
+    dy = by - cy
+    mag = math.hypot(dx, dy) or 1.0  # Beskyt mod 0-division
 
-    sign_x = 1 if dx >= 0 else -1
-    sign_y = 1 if dy >= 0 else -1
+    # Enhedsvektor i den retning
+    ux, uy = dx / mag, dy / mag
 
-    diagonal_distance = offset_distance / math.sqrt(2)
-
-    sx = cx + sign_x * diagonal_distance
-    sy = cy + sign_y * diagonal_distance
+    # Forskyd stagingpunktet væk fra krydset
+    sx = cx + ux * offset_distance
+    sy = cy + uy * offset_distance
 
     return (int(sx), int(sy), r, o)
 
