@@ -1,20 +1,17 @@
 from collections import deque
 import math
 import numpy as np
-import cv2
 import globals_config as g
 
 
 # =============== 3-D CORRECTION ====================
 ### FIELD IN MM ###
 FIELD_W, FIELD_H = 1800.0, 1200.0
-CAMERA_HEIGHT = 1510.0       # Hight above floor
-ROBOT_MARKER_HEIGHT = 200.0  # Robot hight above floor
+CAMERA_HEIGHT = 1510.0
+ROBOT_MARKER_HEIGHT = 200.0
 BALL_HEIGHT = 40.0
 BARRIER_HEIGHT = 80.0
 
-# Factor < 1  (≈ 0.9)
-_MARKER_SCALE = (CAMERA_HEIGHT - ROBOT_MARKER_HEIGHT) / CAMERA_HEIGHT
 
 _CAMERA_CENTER_WORLD = None
 
@@ -123,7 +120,6 @@ def determine_direction(robot_info, ball_position, egg, crosses=None):
     mag_b = math.hypot(*vector_to_ball)
     cos_theta = max(-1, min(1, dot / (mag_f * mag_b)))
     angle_difference = math.degrees(math.acos(cos_theta))
-    distance_to_ball = mag_b
 
     cross = -(vector_front[0] * vector_to_ball[1] - vector_front[1] * vector_to_ball[0])
 
@@ -338,8 +334,6 @@ def barrier_blocks_path(center_marker, ball, egg, robot_radius=80, threshold=40)
     return False
 
 def close_to_cross(front_marker, back_marker, threshold=100):
-    fx, fy = front_marker
-    bx, by = back_marker
 
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
@@ -379,8 +373,6 @@ def close_to_cross(front_marker, back_marker, threshold=100):
     return closest_dist is not None and closest_dist < threshold
 
 def close_to_barrier(front_marker, back_marker, threshold=55):
-    fx, fy = front_marker
-    bx, by = back_marker
 
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)
@@ -433,7 +425,6 @@ def close_to_egg(front_marker, back_marker, eggs, threshold=120):
     extension = 5000
     extended_front = (bx_w + ux * extension, by_w + uy * extension)
 
-    robot_line = ((bx_w, by_w), extended_front)
     closest_dist = None
 
     for ex, ey, er, _ in eggs:
@@ -448,8 +439,6 @@ def close_to_egg(front_marker, back_marker, eggs, threshold=120):
 
 
 def slow_down_close_to_barrier(front_marker, back_marker, threshold=150):
-    fx, fy = front_marker
-    bx, by = back_marker
 
     fx_w, fy_w = _correct_marker(front_marker)
     bx_w, by_w = _correct_marker(back_marker)

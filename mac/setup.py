@@ -1,9 +1,7 @@
 from collections import deque
 import cv2
-from pathfinding import set_homography
 import numpy as np
-from vision import detect_balls, detect_robot, detect_egg, detect_cross, inside_field
-import time
+from vision import detect_balls, detect_robot, detect_egg, detect_cross
 import globals_config as g
 
 def setup_cross_lines(cap, last_robot_info):

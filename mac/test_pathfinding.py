@@ -1,5 +1,4 @@
 import unittest
-import math
 import pathfinding
 from visualize_pathfinding import visualize_pathfinding
 
