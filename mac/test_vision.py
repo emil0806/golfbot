@@ -7,8 +7,8 @@ from robot_state import RobotState
 from setup import setup_cross_lines, setup_field_lines, setup_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
-from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, set_homography, sort_balls_by_distance,
-    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, zone_to_position)
+from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_for_position, is_ball_in_cross, set_homography, sort_balls_by_distance,
+    is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge)
 import globals_config as g
 
 ### CAMERA FEED ###
@@ -94,7 +94,7 @@ while True:
 
             current_balls = detect_balls(frame, egg, back_marker, front_marker)
 
-            robot_px = back_marker  # bag-markør i pixel
+            robot_px = back_marker
             
             stable_balls = stabilize_detections(current_balls, robot_px, controller)
 
@@ -154,14 +154,6 @@ while True:
                 cv2.circle(frame, (x, y), int(radius), (0, 255, 0), 2)
                 cv2.putText(frame, "Ball", (x - 20, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        # --- Tegn staging-points (lilla) ---
-        """if staged_balls:
-            for (x, y, r, o) in staged_balls:
-                cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
-                cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-        """
 
         if target_ball:
             x, y, r, _ = target_ball
