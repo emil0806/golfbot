@@ -4,10 +4,10 @@ import cv2
 import time
 from robot_controller import RobotController
 from robot_state import RobotState
-from setup import setup_cross_lines, setup_homography
+from setup import setup_cross_lines, setup_field_lines, setup_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
-from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, sort_balls_by_distance,
+from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, set_homography, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, zone_to_position)
 import globals_config as g
 
@@ -55,9 +55,10 @@ last_command = None
 
 # ------ SETUP ------
 try:
+    setup_field_lines()
     cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
-
     H = setup_homography()
+    set_homography(H, int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 except Exception as e:
     print(f"[ERROR] Programmet stødte på en fejl: {e}")
     traceback.print_exc()
@@ -95,7 +96,7 @@ while True:
 
             robot_px = back_marker  # bag-markør i pixel
             
-            stable_balls = stabilize_detections(current_balls, robot_px)
+            stable_balls = stabilize_detections(current_balls, robot_px, controller)
 
             ball_positions = stable_balls
 
