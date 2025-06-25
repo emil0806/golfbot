@@ -34,6 +34,7 @@ class RobotController:
         self.consecutive_delivery_frames = 0
         self.waiting_for_continue = False
         self.last_delivery_time = 0
+        self.delivery_fail_counter = 0
 
         ### STAGING ###
         self.at_blocked_staging = False

@@ -166,7 +166,16 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
         dist_front = np.linalg.norm(
             np.array(front_marker) - np.array(controller.goal_second_target))
         print(f"[Stage 5] Distance to front_alignment: {dist_front:.2f}")
-        if dist_front > 23:
+        if dist_front > 21:
+            if dist_front < 30:
+                controller.delivery_fail_counter += 1
+                if controller.delivery_fail_counter >= 10:
+                    print("[Stage 5] Failsafe triggered. Proceeding to Stage 6.")
+                    controller.delivery_stage = 6
+                    controller.delivery_fail_counter = 0
+                    return RobotState.DELIVERY
+            else:
+                controller.delivery_fail_counter = 0
             movement_command = "slow_forward"
             controller.send_command(movement_command)
         else:

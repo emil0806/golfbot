@@ -17,7 +17,7 @@ def move_robot(direction):
     slow_forward = 10
     very_slow_forward = 5
     turn_speed = 7
-    collector_speed = 65
+    collector_speed = 70
     delivery_speed = -100
    
 
