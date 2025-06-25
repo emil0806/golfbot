@@ -15,7 +15,6 @@ import globals_config as g
 def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotController):
     front_marker, center_marker, back_marker, _ = robot_info
     cx, cy = center_marker
-    print(f"cc egg: {egg}")
 
     if(len(ball_positions) < 1 and controller.delivery_counter > 20):
         return RobotState.DELIVERY
@@ -62,6 +61,9 @@ def handle_collection(robot_info, ball_positions, egg, cross, controller: RobotC
     bx, by, _, _ = target_ball
 
     recalculate = controller.simplified_path is None
+
+    if controller.path_fail_counter >= 3:
+        recalculate = True
 
     if controller.simplified_path and len(controller.simplified_path) > 1:
         zx, zy = controller.simplified_path[controller.path_counter][:2]

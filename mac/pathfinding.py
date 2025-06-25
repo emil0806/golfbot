@@ -104,7 +104,6 @@ def sort_balls_by_distance(ball_positions, front_marker):
     return sorted_balls
 
 def determine_direction(robot_info, ball_position, egg, crosses=None):
-    print(f"path egg: {egg}")
     if not robot_info or not ball_position:
         return "stop"
 
@@ -181,7 +180,7 @@ def is_edge_ball(ball, margin=70):
 
     return near_left or near_right or near_top or near_bottom
 
-def is_ball_near_egg(ball, eggs, threshold=150):
+def is_ball_near_egg(ball, eggs, threshold=100):
     bx, by, *_ = ball
     for ex, ey, er, _ in eggs:
         dist = math.hypot(bx - ex, by - ey)

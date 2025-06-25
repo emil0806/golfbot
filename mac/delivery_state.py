@@ -23,21 +23,22 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
 
         cx = (front_marker[0] + back_marker[0]) / 2
         cy = (front_marker[1] + back_marker[1]) / 2
+        rx, ry = back_marker
         dist_to_first_target = np.linalg.norm(
-            np.array((cx, cy)) - np.array(controller.goal_first_target))
+            np.array((rx, ry)) - np.array(controller.goal_first_target))
         print(f"[Stage 1] Distance to staging: {dist_to_first_target:.2f}")
         
         recalculate = controller.simplified_path is None
 
         if controller.simplified_path and len(controller.simplified_path) > 1:
             zx, zy = controller.simplified_path[0][:2]
-            dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-            if dist < 30:
+            dist = np.linalg.norm(np.array([rx, ry]) - np.array([zx, zy]))
+            if dist < 50:
                 controller.simplified_path.pop(0)
                 recalculate = True
 
         if recalculate:
-            robot_zone = get_zone_for_position(cx, cy)
+            robot_zone = get_zone_for_position(rx, ry)
             ball_zone = get_zone_for_position(bx, by)
 
             path = bfs_path(robot_zone, ball_zone, egg)
@@ -57,8 +58,8 @@ def handle_delivery(robot_info, ball_positions, egg, cross, controller: RobotCon
 
             zx, zy = next_target[:2]
 
-            dist = np.linalg.norm(np.array([cx, cy]) - np.array([zx, zy]))
-            if dist < 30:
+            dist = np.linalg.norm(np.array([rx, ry]) - np.array([zx, zy]))
+            if dist < 50:
                 if len(controller.simplified_path) > 1:
                     controller.simplified_path.pop(0)
                 else:

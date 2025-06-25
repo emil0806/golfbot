@@ -36,7 +36,6 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 ### CONTROLLER ###
 controller = RobotController(conn)
 
-start_time = time.time()
 elapsed_time = 0
 
 ### STAGING ###
@@ -89,6 +88,9 @@ except Exception as e:
 
 controller.state = RobotState.COLLECTION
 
+input("Press enter to start")
+
+start_time = time.time()
 
 while True:
     try:
@@ -135,7 +137,6 @@ while True:
             controller.set_state(RobotState.DELIVERY)
 
         if controller.state == RobotState.COLLECTION:
-            print(f"collection egg: {egg}")
             new_state = handle_collection(robot_info, ball_positions, egg, cross, controller)
         elif controller.state == RobotState.DELIVERY:
             new_state = handle_delivery(robot_info, ball_positions, egg, cross, controller)

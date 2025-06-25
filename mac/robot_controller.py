@@ -52,6 +52,7 @@ class RobotController:
         self.path_fail_counter = 0
 
         ### TARGETS ###
+        self.goal_zero_target = None
         self.goal_second_target = None
         self.goal_first_target = None
 
