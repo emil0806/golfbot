@@ -4,10 +4,10 @@ import cv2
 import time
 from robot_controller import RobotController
 from robot_state import RobotState
-from setup import setup_cross_lines, setup_homography
+from setup import setup_cross_lines, setup_field_lines, setup_homography
 import numpy as np
 from vision import detect_balls, detect_robot, detect_egg, stabilize_detections
-from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, sort_balls_by_distance,
+from pathfinding import (bfs_path, create_staging_point_cross, get_cross_zones, get_grid_thresholds, get_simplified_path, get_zone_center, get_zone_for_position, is_ball_in_cross, set_homography, sort_balls_by_distance,
     is_corner_ball, is_edge_ball, create_staging_point_corner, create_staging_point_edge, zone_to_position)
 import globals_config as g
 
@@ -55,9 +55,10 @@ last_command = None
 
 # ------ SETUP ------
 try:
+    setup_field_lines()
     cross, cross_center, egg, last_robot_info = setup_cross_lines(cap, last_robot_info)
-
     H = setup_homography()
+    set_homography(H, int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 except Exception as e:
     print(f"[ERROR] Programmet stødte på en fejl: {e}")
     traceback.print_exc()
@@ -95,7 +96,7 @@ while True:
 
             robot_px = back_marker  # bag-markør i pixel
             
-            stable_balls = stabilize_detections(current_balls, robot_px)
+            stable_balls = stabilize_detections(current_balls, robot_px, controller)
 
             ball_positions = stable_balls
 
@@ -125,7 +126,7 @@ while True:
             ball_zone = get_zone_for_position(bx, by)
             forbidden_zones = get_cross_zones()
 
-            path = bfs_path(robot_zone, ball_zone, egg, cross, ball_position=target_ball[:2])
+            path = bfs_path(robot_zone, ball_zone, egg, ball_position=target_ball[:2])
 
             if path and len(path) > 1:
                 controller.path_to_target = path
@@ -133,7 +134,7 @@ while True:
                 controller.path_to_target = None
 
             if controller.path_to_target:
-                simplified_path = get_simplified_path(controller.path_to_target, center_marker, target_ball, egg, cross)
+                simplified_path = get_simplified_path(controller.path_to_target, center_marker, target_ball, egg)
                 controller.simplified_path = simplified_path
                 print(f"simple path: {simplified_path}")
 
@@ -155,11 +156,12 @@ while True:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # --- Tegn staging-points (lilla) ---
-        if staged_balls:
+        """if staged_balls:
             for (x, y, r, o) in staged_balls:
                 cv2.circle(frame, (int(x), int(y)), int(r), (255, 0, 255), 2)
                 cv2.putText(frame, "Staging", (int(x) - 25, int(y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        """
 
         if target_ball:
             x, y, r, _ = target_ball
@@ -222,8 +224,21 @@ while True:
                 x1, y1 = path_points[i][:2]
                 x2, y2 = path_points[i + 1][:2]
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)
+                
+        # --- Tegn border lines (blå) ---
+        for x1, y1, x2, y2 in g.get_field_lines():
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Field", (cx - 20, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
-
+        # --- Tegn cross lines (blå) ---
+        for x1, y1, x2, y2 in g.get_cross_lines():
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            cv2.putText(frame, "Cross", (cx - 20, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+                
         cv2.imshow("Staging Ball Test", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
